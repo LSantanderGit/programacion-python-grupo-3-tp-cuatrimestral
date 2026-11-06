@@ -1,4 +1,4 @@
-# queue-perf-ladder
+# Grupo 3 - Programación en Python - TP Cuatrimestral
 
 Escalera de optimizacion en Python: simulador de colas Monte Carlo (UAI, Programacion II, grupo 3).
 
