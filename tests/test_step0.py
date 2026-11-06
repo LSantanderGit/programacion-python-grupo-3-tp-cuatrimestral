@@ -2,12 +2,15 @@ import numpy as np
 import pytest
 
 from queue_sim import step0_naive as step0
+from queue_sim import step1_datastructs as step1
+from queue_sim import step2_idiomatic as step2
+from queue_sim import step3_numpy as step3
 from queue_sim.metrics import metrics
 from queue_sim.theory import mm1, mmc
 from queue_sim.workload import generate_workload, spawn_seeds
 
 # En fases siguientes solo se agregan escalones a esta lista.
-STEPS = [step0.simulate]
+STEPS = [step0.simulate, step1.simulate, step2.simulate, step3.simulate]
 IDS = [f.__module__.rsplit(".", 1)[-1] for f in STEPS]
 
 
@@ -54,3 +57,12 @@ def test_contra_teoria(simulate, servers):
     for muestras, teorico in ((wq, esperado["Wq"]), (w, esperado["W"])):
         se = np.std(muestras, ddof=1) / np.sqrt(reps)
         assert abs(np.mean(muestras) - teorico) <= 3 * se
+
+
+@pytest.mark.parametrize("simulate", STEPS[1:], ids=IDS[1:])
+@pytest.mark.parametrize("servers", [1, 2, 3, 8])
+def test_igual_al_baseline(simulate, servers):
+    """D4: cada escalon coincide con el baseline (allclose, rtol=1e-9)."""
+    arrivals, services = generate_workload(100_000, 0.75 * servers, 1.0, seed=11)
+    esperado = step0.simulate(arrivals, services, servers)
+    assert np.allclose(simulate(arrivals, services, servers), esperado, rtol=1e-9)
