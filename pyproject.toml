@@ -1,0 +1,33 @@
+[project]
+name = "queue-perf-ladder"
+version = "0.1.0"
+description = "Escalera de optimizacion en Python: simulador de colas Monte Carlo (UAI, Programacion II)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy",
+    "numba",
+    "pytest",
+    "pytest-benchmark",
+    "ruff",
+    "radon",
+    "matplotlib",
+    "pandas",
+    "psutil",
+    "py-cpuinfo",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/queue_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "benchmarks", "scripts"]
