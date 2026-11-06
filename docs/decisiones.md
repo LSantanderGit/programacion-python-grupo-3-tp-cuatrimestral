@@ -21,3 +21,4 @@ Formato: D#: decision, razon, fecha.
 - **D14**: Python fijado a `>=3.12,<3.13`; build backend hatchling con layout `src/`. Versiones resueltas por uv (ver uv.lock): numpy 2.5.4, numba 0.68.1. Fecha: 2026-11-06.
 - **D15**: `metrics()` calcula utilizacion como `sum(services)/(servers*makespan)` sobre todos los requests; con `makespan=None` devuelve `nan`. Se agrega `makespan(arrivals, waits, services)` como ayudante. Razon: la firma pedida no recibe `arrivals`. Fecha: 2026-11-06.
 - **D16**: Test contra teoria usa rho=0.7, n=200_000, R=20, semilla base 2026 y `|media - teorico| <= 3*EE` (EE = desvio/sqrt(R)). Fecha: 2026-11-06.
+- **D17**: Escalon 3 usa Lindley vectorizado (cumsum + minimum.accumulate) solo para c=1; para c>1 reutiliza el bucle del escalon 2, porque el estado es un vector de c tiempos con argmin y no admite scan. Por eso el escalon 3 no acelera c>1. Fecha: 2026-11-06.
