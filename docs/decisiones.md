@@ -22,3 +22,8 @@ Formato: D#: decision, razon, fecha.
 - **D15**: `metrics()` calcula utilizacion como `sum(services)/(servers*makespan)` sobre todos los requests; con `makespan=None` devuelve `nan`. Se agrega `makespan(arrivals, waits, services)` como ayudante. Razon: la firma pedida no recibe `arrivals`. Fecha: 2026-11-06.
 - **D16**: Test contra teoria usa rho=0.7, n=200_000, R=20, semilla base 2026 y `|media - teorico| <= 3*EE` (EE = desvio/sqrt(R)). Fecha: 2026-11-06.
 - **D17**: Escalon 3 usa Lindley vectorizado (cumsum + minimum.accumulate) solo para c=1; para c>1 reutiliza el bucle del escalon 2, porque el estado es un vector de c tiempos con argmin y no admite scan. Por eso el escalon 3 no acelera c>1. Fecha: 2026-11-06.
+
+## Decisiones tomadas en la Fase 3
+
+- **D18**: Escalon 4 implementa `_simulate_numba` con `@njit(cache=True)`, seleccionando el servidor libre via `np.argmin` sobre un array de floats. Se incluye `warmup()` para compilar previamente y medir el costo JIT de forma aislada. Fecha: 2026-11-12.
+- **D19**: Escalon 5 implementa `simulate(arrivals, services, servers)` delegando en el kernel de Numba (escalon 4) para satisfacer el contrato comun D3, y provee `simulate_replicas` y `simulate_replicas_serial` para corridas Monte Carlo con `ProcessPoolExecutor`. Se anade parametro `return_metrics` para permitir calcular metricas en el worker y evitar la serializacion por IPC de grandes arrays en Windows (`spawn`). Fecha: 2026-11-12.
