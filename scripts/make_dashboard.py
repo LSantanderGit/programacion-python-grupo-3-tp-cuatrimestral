@@ -105,7 +105,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>queue-perf-ladder | Dashboard de Rendimiento</title>
+    <title>TP Cuatrimestral: Escalera de Optimización | Dashboard</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -126,8 +126,8 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        queue-perf-ladder
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">TP Cuatrimestral</span>
+                        TP Cuatrimestral: Escalera de Optimización
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Dashboard</span>
                     </h1>
                     <p class="text-xs text-slate-400">Escalera de optimización en Python | Capacidad Planning Monte Carlo</p>
                 </div>
@@ -459,8 +459,8 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-950 border-t border-slate-800 text-center py-6 text-xs text-slate-500">
-        <p>queue-perf-ladder &bull; Asignatura: T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON &bull; Sede: 093 UAI - NORTE</p>
+    <footer class="bg-slate-955 border-t border-slate-800 text-center py-6 text-xs text-slate-500">
+        <p>TP Cuatrimestral: Escalera de Optimización &bull; Asignatura: T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON &bull; Sede: 093 UAI - NORTE</p>
         <p class="mt-1">Trabajo de Investigación UAI &bull; Buenos Aires, Argentina &bull; 2026</p>
     </footer>
 

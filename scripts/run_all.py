@@ -21,7 +21,7 @@ from scripts.serve_dashboard import serve_dashboard
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Punto de entrada integral para pruebas, benchmarks, reportes y dashboard de queue-perf-ladder."
+        description="Punto de entrada integral para pruebas, benchmarks, reportes y dashboard del TP Cuatrimestral: Escalera de Optimización."
     )
     parser.add_argument(
         "--mode",

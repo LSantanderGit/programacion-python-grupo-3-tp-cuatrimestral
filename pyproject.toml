@@ -1,7 +1,7 @@
 [project]
-name = "queue-perf-ladder"
+name = "tp-cuatrimestral-escalera-optimizacion"
 version = "0.1.0"
-description = "Escalera de optimizacion en Python: simulador de colas Monte Carlo (UAI, Programacion II)"
+description = "TP Cuatrimestral: Escalera de Optimizacion en Python (UAI, Programacion en Python)"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
