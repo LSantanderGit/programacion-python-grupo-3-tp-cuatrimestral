@@ -495,7 +495,7 @@ A continuación se presentan las tablas cuantitativas y gráficos generados a pa
 
 ## 1. Discusión
 Los resultados obtenidos permiten extraer valiosas conclusiones de ingeniería:
-1. **La barrera de NumPy en colas multiserver:** Para colas $M/M/1$, la recurrencia de Lindley vectoriza limpiamente con `cumsum` y `minimum.accumulate`. Sin embargo, para $c > 1$ el estado de los servidores exige un `argmin` dinámico que no admite vectorización secuencial directa, provocando que NumPy no supere al bucle idiomático en Python.
+1. **La barrera de NumPy en colas multiserver:** Para colas $M/M/1$, la recurrencia de Lindley vectoriza limpiamente con suma acumulada (`np.add.accumulate`) y `minimum.accumulate`. Sin embargo, para $c > 1$ el estado de los servidores exige un `argmin` dinámico que no admite vectorización secuencial directa, provocando que NumPy no supere al bucle idiomático en Python.
 2. **El poder de Numba:** Numba resolvió elegantemente el problema compilando el bucle nativo a código máquina LLVM, reduciendo la latencia de $67\\text{ ms}$ a $0.46\\text{ ms}$ ($146\\times$).
 3. **El costo del multiprocessing en Windows:** La creación de procesos vía `spawn` impone un peaje fijo de $2$ a $3$ segundos. Paralelizar solo tiene sentido cuando la carga por réplica es lo suficientemente pesada ($n > 10^6$) como para que el tiempo de cómputo sobrepase dicho umbral.
 

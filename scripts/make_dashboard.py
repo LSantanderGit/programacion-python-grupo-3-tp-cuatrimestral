@@ -421,7 +421,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                             <i class="fa-solid fa-ban text-rose-400"></i> La Barrera Secuencial de NumPy
                         </h4>
                         <p>
-                            Para $c=1$, la recurrencia de Lindley vectoriza limpiamente con <code>cumsum</code> y <code>minimum.accumulate</code>.
+                            Para $c=1$, la recurrencia de Lindley vectoriza limpiamente con suma acumulada (<code>np.add.accumulate</code>) y <code>minimum.accumulate</code>.
                         </p>
                         <p>
                             Para $c>1$, mantener el vector de instantes libres con <code>argmin</code> exige dependencias dinámicas que impiden el scan acumulativo, haciendo que NumPy no supere al bucle idiomático en Python puro.

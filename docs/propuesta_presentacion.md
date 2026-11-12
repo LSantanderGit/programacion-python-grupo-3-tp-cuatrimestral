@@ -81,7 +81,7 @@ La escalera sube de la mejora más barata a la más costosa, y cada escalón se 
 | 0 | Baseline ingenuo: Python puro, objetos y listas | Nada: es el punto de referencia | Fija el resultado correcto y el tiempo base; se valida contra la teoría |
 | 1 | Estructuras de datos y algoritmo: deque, heapq, __slots__ | Complejidad algorítmica (por ejemplo list.pop(0) es O(n)) | Mayor ganancia con menor costo: antes de compilar, mejorar el algoritmo |
 | 2 | Python idiomático: variables locales, generadores, menos llamadas | Overhead del intérprete en el bucle caliente | Ganancia moderada; muestra el costo en legibilidad |
-| 3 | NumPy: generar tiempos de llegada y servicio en bloque, cumsum | Bucles en Python puro | Vectoriza lo que se puede; la recurrencia de la cola es secuencial y no se vectoriza de forma directa, lo que es un hallazgo en sí |
+| 3 | NumPy: generar tiempos de llegada y servicio en bloque, suma acumulada (add.accumulate) | Bucles en Python puro | Vectoriza lo que se puede; la recurrencia de la cola es secuencial y no se vectoriza de forma directa, lo que es un hallazgo en sí |
 | 4 | Numba (JIT) sobre el bucle secuencial | Lo que NumPy no pudo resolver | Mayor salto esperado, con costo en warm-up de compilación y dependencias |
 | 5 | Paralelismo: réplicas Monte Carlo con multiprocessing | Uso de varios núcleos | Se paraleliza al final, sobre código ya eficiente; se analiza con la ley de Amdahl |
 | 6 (opcional) | Extensión nativa: Cython o Rust | Límite de lo que logra Python | Solo si sobra tiempo; compara contra Numba |

@@ -17,7 +17,7 @@ def generate_workload(
     if arrival_rate <= 0 or service_rate <= 0:
         raise ValueError("Las tasas de llegada y de servicio deben ser positivas")
     rng = np.random.default_rng(seed)
-    arrivals = np.cumsum(rng.exponential(1.0 / arrival_rate, n_requests))
+    arrivals = np.add.accumulate(rng.exponential(1.0 / arrival_rate, n_requests))
     services = rng.exponential(1.0 / service_rate, n_requests)
     return arrivals, services
 
