@@ -5,12 +5,21 @@ from queue_sim import step0_naive as step0
 from queue_sim import step1_datastructs as step1
 from queue_sim import step2_idiomatic as step2
 from queue_sim import step3_numpy as step3
+from queue_sim import step4_numba as step4
+from queue_sim import step5_parallel as step5
 from queue_sim.metrics import metrics
 from queue_sim.theory import mm1, mmc
 from queue_sim.workload import generate_workload, spawn_seeds
 
 # En fases siguientes solo se agregan escalones a esta lista.
-STEPS = [step0.simulate, step1.simulate, step2.simulate, step3.simulate]
+STEPS = [
+    step0.simulate,
+    step1.simulate,
+    step2.simulate,
+    step3.simulate,
+    step4.simulate,
+    step5.simulate,
+]
 IDS = [f.__module__.rsplit(".", 1)[-1] for f in STEPS]
 
 
