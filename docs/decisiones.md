@@ -32,3 +32,7 @@ Formato: D#: decision, razon, fecha.
 
 - **D20**: En `benchmarks/config.py` y `benchmarks/harness.py`, el perfil `quick` evalua tamanos hasta $10^5$ (3 repeticiones intercaladas) para verificacion de punta a punta en menos de 2 minutos, mientras que `full` escala hasta $10^7$ (7 repeticiones) segun D6. La medicion de mantenibilidad extrae SLOC y complejidad ciclomica (media y maxima) con `radon`. Fecha: 2026-11-12.
 - **D21**: El smoke benchmark de CI (`scripts/smoke_benchmark.py`) verifica que el ratio de velocidad del escalon 4 respecto al escalon 1 sea al menos $5.0\times$ sobre entradas compartidas ($n=20\,000, c=2$), aislando las regresiones de rendimiento del ruido inherente a los runners virtuales compartidos. Fecha: 2026-11-12.
+
+## Decisiones tomadas en la Fase 5
+
+- **D22**: `scripts/make_report.py` implementa la generacion automatizada de figuras a 300 DPI (Graficos 1 a 5) y tablas formales en Markdown (Tablas I a VI) leyendo exclusivamente de `results/raw/` sin repetir mediciones. Genera los capitulos del informe y el documento maestro `report/informe_completo.md` listo para Google Docs siguiendo la guia formal de la UAI. Fecha: 2026-11-12.
