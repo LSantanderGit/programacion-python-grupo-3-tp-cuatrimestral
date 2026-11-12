@@ -1,6 +1,6 @@
 # Escalera de Optimización en Python: Simulador de Colas Monte Carlo
 
-Trabajo de investigación grupal de la asignatura **69 - Optativa - Programación II** (Facultad de Tecnología Informática, Universidad Abierta Interamericana - UAI, Sede Norte, Turno Noche, Grupo 3).
+Trabajo de investigación grupal de la asignatura **T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON** (Facultad de Tecnología Informática, Universidad Abierta Interamericana - UAI, Sede: 093 UAI - NORTE, Turno Noche, Grupo 3).
 
 ### Integrantes
 - José Manuel Balderrama Mariscal
@@ -9,7 +9,10 @@ Trabajo de investigación grupal de la asignatura **69 - Optativa - Programació
 - Nicolas Torcuato Alberto Maciel
 - Lucas Matías Santander
 
-**Profesor Titular:** Ing. Gastón Matías Weingand  
+**Profesores:**
+- Ing. Gastón Matías Weingand
+- Ing. Bonaccorsi Maximiliano Leonardo  
+
 **Fecha de entrega:** 19/11/2026  
 
 ---

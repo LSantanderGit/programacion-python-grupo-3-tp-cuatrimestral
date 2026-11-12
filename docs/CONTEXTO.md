@@ -3,7 +3,7 @@ Contexto del proyecto: "Escalera de optimización"
 Documento de contexto para el equipo y para cualquier agente de IA que trabaje en el proyecto. Resume qué se decidió, por qué, qué debe contener el proyecto y qué sigue abierto. Última actualización: 2026-11-06. Repositorio (ya existe): https://github.com/LSantanderGit/programacion-python-grupo-3-tp-cuatrimestral. Entrega: 19/11/2026.
 
 1. Resumen en 30 segundos
-Qué es: trabajo de investigación grupal de la asignatura 69 - Optativa - Programación II (Facultad de Tecnología Informática, Universidad Abierta Interamericana, UAI); el proyecto de Claude se llama "Programación en Python". Estudia cómo se acelera un programa en Python etapa por etapa (la "escalera de optimización") y cuánto cuesta cada mejora en legibilidad y mantenibilidad.
+Qué es: trabajo de investigación grupal de la asignatura T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON (Facultad de Tecnología Informática, Universidad Abierta Interamericana, UAI - Sede: 093 UAI - NORTE, Turno Noche, Grupo 3); profesores: Ing. Gastón Matías Weingand e Ing. Bonaccorsi Maximiliano Leonardo. Estudia cómo se acelera un programa en Python etapa por etapa (la "escalera de optimización") y cuánto cuesta cada mejora en legibilidad y mantenibilidad.
 Tema elegido: Rendimiento (área sugerida en la consigna).
 Caso de estudio: un simulador de carga de un servicio (cola de requests atendida por N workers, simulación Monte Carlo) para estimar utilización y latencia (p95) antes de que el servicio se sature.
 Validación: cada versión debe dar el mismo resultado que el baseline y coincidir con la teoría de colas (M/M/1 y M/M/c).
@@ -130,7 +130,7 @@ Quedarse solo en mostrar números sin explicar por qué ocurre cada diferencia.
 Cubrir demasiado: es mejor una escalera completa y bien medida que dos a medias.
 8. Estructura y formato del informe (según la guía oficial "Formato para presentación del trabajo de investigación")
 8.1 Capítulos exigidos, en este orden
-Carátula con: Universidad Abierta Interamericana, Facultad de Tecnología Informática, "Asignatura: 69 - Optativa - Programación II", título del trabajo, nombres de los alumnos (entre 2 y 4), "Trabajo de investigación", tutor principal (profesor de la asignatura), tutores asociados, (provincia) - Argentina y año.
+Carátula con: Universidad Abierta Interamericana, Facultad de Tecnología Informática, Sede 093 UAI - NORTE, "Asignatura: T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON", título del trabajo, nombres de los alumnos, "Trabajo de investigación", profesores (Ing. Gastón Matías Weingand e Ing. Bonaccorsi Maximiliano Leonardo), Buenos Aires - Argentina y año.
 Hoja en blanco.
 Dedicatoria (opcional).
 Agradecimientos.

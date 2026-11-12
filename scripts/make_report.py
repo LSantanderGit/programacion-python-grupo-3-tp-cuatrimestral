@@ -373,8 +373,8 @@ def write_report_chapters(tables: dict, fig_dir: Path, report_dir: Path) -> Path
 
 **Universidad Abierta Interamericana (UAI)**  
 **Facultad de Tecnología Informática**  
-**Asignatura:** 69 - Optativa - Programación II  
-**Turno:** Noche | **Sede:** Regional Norte  
+**Asignatura:** T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON  
+**Sede:** 093 UAI - NORTE | **Turno:** Noche  
 
 **Alumnos:**
 - José Manuel Balderrama Mariscal
@@ -383,7 +383,9 @@ def write_report_chapters(tables: dict, fig_dir: Path, report_dir: Path) -> Path
 - Nicolas Torcuato Alberto Maciel
 - Lucas Matías Santander
 
-**Profesor Titular:** Ing. Gastón Matías Weingand  
+**Profesores:**
+- Ing. Gastón Matías Weingand
+- Ing. Bonaccorsi Maximiliano Leonardo  
 **Año:** 2026 | Buenos Aires, Argentina  
 
 ---
