@@ -19,5 +19,6 @@ results/raw/*
 !results/raw/.gitkeep
 results/figures/*
 !results/figures/.gitkeep
+results/*.html
 report/*
 !report/.gitkeep

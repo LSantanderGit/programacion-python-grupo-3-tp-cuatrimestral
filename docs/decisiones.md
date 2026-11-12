@@ -36,3 +36,4 @@ Formato: D#: decision, razon, fecha.
 ## Decisiones tomadas en la Fase 5
 
 - **D22**: `scripts/make_report.py` implementa la generacion automatizada de figuras a 300 DPI (Graficos 1 a 5) y tablas formales en Markdown (Tablas I a VI) leyendo exclusivamente de `results/raw/` sin repetir mediciones. Genera los capitulos del informe y el documento maestro `report/informe_completo.md` listo para Google Docs siguiendo la guia formal de la UAI. Fecha: 2026-11-12.
+- **D23**: Se implementa `scripts/make_dashboard.py` y `scripts/serve_dashboard.py` para generar un Dashboard Web Interactivo autocontenido (`results/dashboard.html`) servido localmente. Se anade el parametro `--serve` a `scripts/run_all.py` para permitir la ejecucion integral en un solo paso: tests de correccion, benchmarks, figuras 300 DPI, informe y apertura del dashboard en el navegador. Fecha: 2026-11-12.

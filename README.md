@@ -52,10 +52,16 @@ Valida que todas las implementaciones coincidan con el baseline (`allclose`, tol
 uv run pytest -q
 ```
 
-### 3. Ejecutar los Benchmarks Automatizados
-El script [scripts/run_all.py](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/scripts/run_all.py) es el punto de entrada único para ejecutar pruebas, capturar el entorno del sistema, realizar mediciones de tiempo/memoria y generar las métricas de calidad de código con `radon`.
+### 3. Ejecutar la Pipeline Automatizada (Todo-en-Uno)
+El script [scripts/run_all.py](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/scripts/run_all.py) es el punto de entrada integral que en una sola pasada ejecuta los tests, mide rendimiento y memoria, genera las figuras a 300 DPI, construye el informe formal y el Dashboard web interactivo:
 
-- **Modo rápido (Quick, ~1 a 2 minutos):** Ideal para verificación funcional y de rendimiento local:
+- **Modo rápido Todo-en-Uno con Dashboard en vivo (`--serve`):**
+  ```bash
+  uv run python -m scripts.run_all --mode quick --serve
+  ```
+  *(Corre los tests, benchmarks, genera gráficos/reportes y abre automáticamente el Dashboard interactivo en el navegador)*.
+
+- **Modo rápido estándar (Quick, ~1 a 2 minutos):**
   ```bash
   uv run python -m scripts.run_all --mode quick
   ```
@@ -65,14 +71,14 @@ El script [scripts/run_all.py](file:///c:/Users/lsantander/Documents/uai/python/
   uv run python -m scripts.run_all --mode full
   ```
 
-Los datos crudos generados (CSV y JSON) se guardan automáticamente en `results/raw/`:
-- `results/raw/env.json`: Especificaciones completas de hardware (CPU, núcleos, RAM) y versiones.
-- `results/raw/benchmark_times.csv`: Tiempos (mediana, IQR, min, max) por escalón, tamaño y servidores.
-- `results/raw/benchmark_memory.csv`: Consumo de memoria pico (`tracemalloc`).
-- `results/raw/parallel_scaling.csv`: Speedup y eficiencia del escalón paralelo.
-- `results/raw/code_metrics.json`: Líneas de código (LOC/SLOC) y complejidad ciclomática (`radon`).
+### 4. Servir el Dashboard Web en cualquier momento
+Si los benchmarks ya fueron ejecutados previamente, se puede levantar directamente el servidor web interactivo sin volver a correr las pruebas:
+```bash
+uv run python -m scripts.serve_dashboard
+```
+El dashboard estará accesible localmente en `http://localhost:8000/results/dashboard.html`.
 
-### 4. Benchmark de Humo (CI)
+### 5. Benchmark de Humo (CI)
 Para verificar que no existan regresiones de rendimiento en entornos de integración continua mediante ratios relativos (sin falsos positivos por ruido en runners compartidos):
 ```bash
 uv run python -m scripts.smoke_benchmark
