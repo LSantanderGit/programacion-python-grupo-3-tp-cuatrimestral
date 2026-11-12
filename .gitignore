@@ -14,8 +14,10 @@ __pycache__/
 CLAUDE.md
 graphify-out/
 
-# Resultados generados dinamicamente (se versiona solo la estructura de carpetas)
+# Resultados y reportes generados dinamicamente (se versiona solo la estructura de carpetas)
 results/raw/*
 !results/raw/.gitkeep
 results/figures/*
 !results/figures/.gitkeep
+report/*
+!report/.gitkeep
