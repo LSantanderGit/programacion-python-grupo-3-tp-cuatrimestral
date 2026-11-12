@@ -1,9 +1,21 @@
+# Entornos virtuales y dependencias
 .venv/
+*.egg-info/
+
+# Compilacion y caches de Python
 __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
 .benchmarks/
-*.egg-info/
+
+# Herramientas de soporte y asistentes de IA (uso local)
+.claude/
+CLAUDE.md
 graphify-out/
-.claude
+
+# Resultados generados dinamicamente (se versiona solo la estructura de carpetas)
+results/raw/*
+!results/raw/.gitkeep
+results/figures/*
+!results/figures/.gitkeep
