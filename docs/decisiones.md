@@ -27,3 +27,8 @@ Formato: D#: decision, razon, fecha.
 
 - **D18**: Escalon 4 implementa `_simulate_numba` con `@njit(cache=True)`, seleccionando el servidor libre via `np.argmin` sobre un array de floats. Se incluye `warmup()` para compilar previamente y medir el costo JIT de forma aislada. Fecha: 2026-11-12.
 - **D19**: Escalon 5 implementa `simulate(arrivals, services, servers)` delegando en el kernel de Numba (escalon 4) para satisfacer el contrato comun D3, y provee `simulate_replicas` y `simulate_replicas_serial` para corridas Monte Carlo con `ProcessPoolExecutor`. Se anade parametro `return_metrics` para permitir calcular metricas en el worker y evitar la serializacion por IPC de grandes arrays en Windows (`spawn`). Fecha: 2026-11-12.
+
+## Decisiones tomadas en la Fase 4
+
+- **D20**: En `benchmarks/config.py` y `benchmarks/harness.py`, el perfil `quick` evalua tamanos hasta $10^5$ (3 repeticiones intercaladas) para verificacion de punta a punta en menos de 2 minutos, mientras que `full` escala hasta $10^7$ (7 repeticiones) segun D6. La medicion de mantenibilidad extrae SLOC y complejidad ciclomica (media y maxima) con `radon`. Fecha: 2026-11-12.
+- **D21**: El smoke benchmark de CI (`scripts/smoke_benchmark.py`) verifica que el ratio de velocidad del escalon 4 respecto al escalon 1 sea al menos $5.0\times$ sobre entradas compartidas ($n=20\,000, c=2$), aislando las regresiones de rendimiento del ruido inherente a los runners virtuales compartidos. Fecha: 2026-11-12.
