@@ -84,7 +84,7 @@ Para verificar que no existan regresiones de rendimiento en entornos de integrac
 uv run python -m scripts.smoke_benchmark
 ```
 
-### 5. Verificación de Linter y Formato
+### 6. Verificación de Linter y Formato
 ```bash
 uv run ruff check .
 ```
@@ -92,6 +92,8 @@ uv run ruff check .
 ---
 
 ## Documentación y Referencias
-- [docs/CONTEXTO.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/CONTEXTO.md): Resumen del contexto y objetivos del proyecto.
-- [docs/decisiones.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/decisiones.md): Registro de decisiones técnicas cerradas (D1 a D19).
+- [docs/CONTEXTO.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/CONTEXTO.md): Contexto y consigna del trabajo de investigación.
+- [docs/decisiones.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/decisiones.md): Registro histórico de decisiones técnicas cerradas (D1 a D23).
+- [docs/diferencias_y_decisiones_proyecto.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/diferencias_y_decisiones_proyecto.md): Informe exhaustivo de evolución, diferencias respecto al prompt inicial y justificación de decisiones.
 - [docs/hallazgos_fase3.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/hallazgos_fase3.md): Detalle empírico de las mediciones de Numba, warm-up y escalamiento paralelo.
+- [docs/propuesta_presentacion.md](file:///c:/Users/lsantander/Documents/uai/python/Tp/programacion-python-grupo-3-tp-cuatrimestral/docs/propuesta_presentacion.md): Estructura y notas para la presentación oral ante la cátedra.

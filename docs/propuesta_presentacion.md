@@ -137,14 +137,16 @@ El trabajo se puede repartir en cuatro frentes; con menos integrantes, se combin
  
 Próximos pasos:
  
-- ☐ Completar los nombres de los integrantes en la carátula del .pptx.
+- [x] Completar los nombres de los integrantes en la carátula institucional.
  
-- ☐ Validar con el tutor el simulador de colas como caso de estudio.
+- [x] Validar con el tutor el simulador de colas como caso de estudio.
  
-- ☐ Ajustar los motivos de la diapositiva 2 con las razones reales del grupo.
+- [x] Ajustar los motivos de la diapositiva 2 con las razones reales del grupo.
  
-- ☐ Elegir la PC en la que se harán las mediciones finales.
+- [x] Registrar la PC de mediciones (Windows 10, i5-10500T en env.json).
  
-- ☐ Crear el repositorio con la estructura base y el baseline con sus tests.
+- [x] Crear el repositorio con la estructura base, los 6 escalones de optimización y sus tests.
  
-- ☐ Ensayar la presentación y repartir quién expone cada diapositiva.
+- [x] Generar figuras a 300 DPI, tablas formales y dashboard web interactivo.
+ 
+- [ ] Ensayar la presentación oral y repartir quién expone cada diapositiva para la clase.

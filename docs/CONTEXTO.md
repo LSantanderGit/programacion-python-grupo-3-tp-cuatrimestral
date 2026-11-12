@@ -179,17 +179,17 @@ Benchmarks, CI e informe	Harness, env.json, pytest-benchmark, gráficos y redacc
 
 Con menos integrantes, los frentes se combinan.
 
-11. Pendientes y preguntas abiertas
- Completar los nombres de los integrantes (carátula y reparto de tareas).
- Validar con el tutor que el simulador de colas encaja como caso de estudio.
- Ajustar con el grupo los motivos de elección de la diapositiva 2.
- Elegir la PC de las mediciones finales: Windows 10, Intel Core i9 de 13.ª generación, 32 GB DDR5 (el modelo exacto de CPU lo registra env.json).
- Acordar los hitos internos hasta la entrega del 19/11/2026.
- Formular la hipótesis de trabajo definitiva (la sección 8.3 tiene una propuesta).
- Definir tutor principal y tutores asociados para la carátula del informe.
- Confirmar la versión de Python y las herramientas de calidad vistas en la cursada.
- Decidir si se incluye el escalón 6 (extensión nativa) y si hay un segundo caso de estudio (logs); por defecto, no.
- Crear la estructura base dentro del repo existente, con workload.py, el baseline y los tests contra M/M/1.
+11. Estado de los pendientes iniciales (todos completados)
+[x] Completar los nombres de los integrantes (carátula y reparto de tareas).
+[x] Validar con el tutor que el simulador de colas encaja como caso de estudio (aprobado).
+[x] Ajustar con el grupo los motivos de elección de la diapositiva 2.
+[x] Elegir la PC de las mediciones finales: Windows 10, Intel Core i5-10500T (registrado en env.json).
+[x] Acordar los hitos internos hasta la entrega del 19/11/2026 (fases 0 a 5 completas).
+[x] Formular la hipótesis de trabajo definitiva (validada en el informe).
+[x] Definir profesores de cátedra (Ing. Gastón Matías Weingand e Ing. Bonaccorsi Maximiliano Leonardo).
+[x] Confirmar la versión de Python y las herramientas de calidad vistas en la cursada (Python 3.12, uv, ruff, radon, pytest).
+[x] Decidir alcance: sin escalón 6 ni segundo caso de estudio (cerrado por D11).
+[x] Crear la estructura base, escalones 0 a 5, tests, benchmarks, dashboard web e informe formal.
 12. Notas para agentes de IA
 Responder en español.
 El proyecto es de ingeniería del software aplicada a rendimiento, no un ejercicio suelto de optimización: toda propuesta debe preservar la corrección, la reproducibilidad y el análisis del costo en mantenibilidad.
