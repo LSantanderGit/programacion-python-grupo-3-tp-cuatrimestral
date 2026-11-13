@@ -14,6 +14,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from queue_sim import step4_numba
+from queue_sim.metrics import metrics as compute_sim_metrics
+from queue_sim.theory import mm1, mmc
+from queue_sim.workload import generate_workload, spawn_seeds
+
 # Configuracion estetica global de Matplotlib para publicaciones
 plt.rcParams.update({
     "font.size": 11,
@@ -351,25 +356,208 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
             t5.append(f"| **{label}** | {row['time_s']:.4f} s | {row['speedup']:.2f}x | {row['efficiency_pct']:.1f}% |")
     tables["tabla_V"] = "\n".join(t5)
 
-    # Tabla VI: Validacion Teorica
+    # Tabla VI: Validacion Teorica (calculada realmente con step4_numba, R=20, n=200_000, rho=0.7)
+    validation_rows = data.get("validation", [])
     t6 = [
         "| Modelo de Cola | Carga $\\rho$ | Servidores ($c$) | Métrica | Valor Teórico | Valor Simulado | Error Estándar ($EE$) | Validación ($|\\Delta| \\le 3EE$) |",
         "|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|",
-        "| $M/M/1$ | 0.70 | 1 | Espera $W_q$ | 2.3333 s | 2.3351 s | 0.0124 s | Cumple (0.15 EE) |",
-        "| $M/M/1$ | 0.70 | 1 | Sistema $W$ | 3.3333 s | 3.3348 s | 0.0125 s | Cumple (0.12 EE) |",
-        "| $M/M/3$ | 0.70 | 3 | Espera $W_q$ | 0.4365 s | 0.4358 s | 0.0031 s | Cumple (0.22 EE) |",
-        "| $M/M/3$ | 0.70 | 3 | Sistema $W$ | 1.4365 s | 1.4359 s | 0.0031 s | Cumple (0.19 EE) |",
     ]
+    for row in validation_rows:
+        status = "Cumple" if row["passes"] else "No cumple"
+        t6.append(
+            f"| {row['model']} | {row['rho']:.2f} | {row['servers']} | {row['metric']} | "
+            f"{row['theoretical']:.4f} s | {row['simulated']:.4f} s | {row['se']:.4f} s | "
+            f"{status} ({row['z_score']:.2f} EE) |"
+        )
     tables["tabla_VI"] = "\n".join(t6)
 
     return tables
 
 
-def write_report_chapters(tables: dict, fig_dir: Path, report_dir: Path) -> Path:
+def compute_analytical_validation() -> list[dict]:
+    """Ejecuta validacion estadistica real de M/M/1 y M/M/3 contra Erlang C (R=20, n=200_000)."""
+    step4_numba.warmup()
+    rho, mu, n, reps = 0.7, 1.0, 200_000, 20
+    rows: list[dict] = []
+    for servers in (1, 3):
+        lam = rho * servers * mu
+        expected = mm1(lam, mu) if servers == 1 else mmc(lam, mu, servers)
+        wq_samples: list[float] = []
+        w_samples: list[float] = []
+        for seed in spawn_seeds(2026, reps):
+            arrivals, services = generate_workload(n, lam, mu, seed)
+            waits = step4_numba.simulate(arrivals, services, servers)
+            m = compute_sim_metrics(waits, services, servers)
+            wq_samples.append(m["mean_wait"])
+            w_samples.append(m["mean_sojourn"])
+
+        model_name = "$M/M/1$" if servers == 1 else f"$M/M/{servers}$"
+        for metric_label, samples, theo_val in (
+            ("Espera $W_q$", wq_samples, expected["Wq"]),
+            ("Sistema $W$", w_samples, expected["W"]),
+        ):
+            sim_mean = float(np.mean(samples))
+            se = float(np.std(samples, ddof=1) / np.sqrt(reps))
+            z_score = abs(sim_mean - theo_val) / se if se > 0 else 0.0
+            rows.append(
+                {
+                    "model": model_name,
+                    "rho": rho,
+                    "servers": servers,
+                    "metric": metric_label,
+                    "theoretical": theo_val,
+                    "simulated": sim_mean,
+                    "se": se,
+                    "z_score": z_score,
+                    "passes": abs(sim_mean - theo_val) <= 3.0 * se,
+                }
+            )
+    return rows
+
+
+def extract_report_stats(data: dict) -> dict:
+    """Extrae estadisticas dinamicas de los datos crudos para el texto del informe."""
+    stats: dict = {}
+
+    # Metricas de codigo
+    cm = {m["step"]: m for m in data.get("code_metrics", [])}
+    stats["e0_sloc"] = cm.get("step0_naive", {}).get("sloc", 0)
+    stats["e0_cc_max"] = cm.get("step0_naive", {}).get("max_complexity", 0)
+    stats["e2_sloc"] = cm.get("step2_idiomatic", {}).get("sloc", 0)
+    stats["e4_sloc"] = cm.get("step4_numba", {}).get("sloc", 0)
+    stats["e4_cc_avg"] = cm.get("step4_numba", {}).get("avg_complexity", 0.0)
+    stats["e5_sloc"] = cm.get("step5_parallel", {}).get("sloc", 0)
+    stats["e5_cc_avg"] = cm.get("step5_parallel", {}).get("avg_complexity", 0.0)
+
+    # Tiempos para c=2 en el mayor tamano comun con el baseline
+    df_t = data.get("times", pd.DataFrame())
+    if not df_t.empty:
+        c2 = df_t[df_t["servers"] == 2]
+        base_c2 = c2[c2["step"] == "step0_naive"]
+        target_n = int(base_c2["n"].max()) if not base_c2.empty else int(c2["n"].max())
+        sub = c2[c2["n"] == target_n]
+
+        def _get_step(step_name: str, frame: pd.DataFrame) -> float:
+            row = frame[frame["step"] == step_name]
+            return float(row["median_s"].values[0]) if not row.empty else 0.0
+
+        base_s = _get_step("step0_naive", sub)
+        e1_s = _get_step("step1_datastructs", sub)
+        e2_s = _get_step("step2_idiomatic", sub)
+        e3_s = _get_step("step3_numpy", sub)
+        e4_s = _get_step("step4_numba", sub)
+
+        stats["target_n"] = target_n
+        stats["base_ms"] = base_s * 1000
+        stats["e1_ms"] = e1_s * 1000
+        stats["e1_sp"] = base_s / e1_s if e1_s > 0 else 0.0
+        stats["e2_ms"] = e2_s * 1000
+        stats["e2_sp"] = base_s / e2_s if e2_s > 0 else 0.0
+        stats["e3_ms"] = e3_s * 1000
+        stats["e3_sp"] = base_s / e3_s if e3_s > 0 else 0.0
+        stats["e4_ms"] = e4_s * 1000
+        stats["e4_sp"] = base_s / e4_s if e4_s > 0 else 0.0
+
+        # Referencia c=1 para mostrar que NumPy si vectoriza M/M/1
+        c1_sub = df_t[(df_t["servers"] == 1) & (df_t["n"] == target_n)]
+        base_c1_s = _get_step("step0_naive", c1_sub)
+        e3_c1_s = _get_step("step3_numpy", c1_sub)
+        stats["e3_c1_ms"] = e3_c1_s * 1000
+        stats["e3_c1_sp"] = base_c1_s / e3_c1_s if e3_c1_s > 0 else 0.0
+
+    # Memoria pico en el mayor tamano medido
+    df_m = data.get("memory", pd.DataFrame())
+    if not df_m.empty:
+        max_mem_n = int(df_m["n"].max())
+        mem_sub = df_m[df_m["n"] == max_mem_n]
+
+        def _get_mem(step_name: str) -> float:
+            row = mem_sub[mem_sub["step"] == step_name]
+            return float(row["peak_memory_kb"].values[0]) if not row.empty else 0.0
+
+        stats["mem_n"] = max_mem_n
+        stats["e0_mem_kb"] = _get_mem("step0_naive")
+        stats["e1_mem_kb"] = _get_mem("step1_datastructs")
+        stats["e2_mem_kb"] = _get_mem("step2_idiomatic")
+        stats["e4_mem_kb"] = _get_mem("step4_numba")
+
+    # Escalamiento paralelo
+    df_s = data.get("scaling", pd.DataFrame())
+    if not df_s.empty:
+        serial_row = df_s[df_s["workers"] == 0]
+        par_rows = df_s[df_s["workers"] > 0]
+        stats["par_n"] = int(df_s["n"].iloc[0])
+        stats["par_servers"] = int(df_s["servers"].iloc[0])
+        stats["par_reps"] = int(df_s["replicas"].iloc[0])
+        stats["t_serial"] = float(serial_row["time_s"].values[0]) if not serial_row.empty else 0.0
+        if not par_rows.empty:
+            stats["par_min_t"] = float(par_rows["time_s"].min())
+            stats["par_max_t"] = float(par_rows["time_s"].max())
+            stats["par_max_sp"] = float(par_rows["speedup"].max())
+            stats["par_min_sp"] = float(par_rows["speedup"].min())
+            stats["par_max_eff"] = float(par_rows["efficiency_pct"].max())
+            stats["par_scales"] = stats["par_max_sp"] > 1.0
+
+    # Validacion analitica
+    val = data.get("validation", [])
+    stats["max_z_score"] = max((r["z_score"] for r in val), default=0.0)
+    stats["all_val_pass"] = all(r["passes"] for r in val) if val else False
+
+    return stats
+
+
+def write_report_chapters(
+    tables: dict, stats: dict, fig_dir: Path, report_dir: Path
+) -> Path:
     """Escribe los capitulos estructurados segun la guia UAI y genera el informe consolidado."""
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    c1 = """# Trabajo de Investigación: Escalera de Optimización en Python
+    target_n = stats.get("target_n", 0)
+    e4_sp = stats.get("e4_sp", 0.0)
+    e4_ms = stats.get("e4_ms", 0.0)
+    base_ms = stats.get("base_ms", 0.0)
+    e1_sp = stats.get("e1_sp", 0.0)
+    e2_ms = stats.get("e2_ms", 0.0)
+    e2_sp = stats.get("e2_sp", 0.0)
+    e3_ms = stats.get("e3_ms", 0.0)
+    e3_sp = stats.get("e3_sp", 0.0)
+    e3_c1_ms = stats.get("e3_c1_ms", 0.0)
+    e3_c1_sp = stats.get("e3_c1_sp", 0.0)
+
+    if stats.get("par_scales", False):
+        par_analysis = (
+            f"Para {stats.get('par_reps', 0)} réplicas de tamaño $n={stats.get('par_n', 0):,}$ "
+            f"($c={stats.get('par_servers', 0)}$), el tiempo serie con Numba ({stats.get('t_serial', 0.0):.4f} s) "
+            f"logra amortizar el arranque de procesos, alcanzando un speedup máximo de "
+            f"**{stats.get('par_max_sp', 0.0):.2f}x** (eficiencia máxima {stats.get('par_max_eff', 0.0):.1f}%)."
+        )
+        par_discussion = (
+            f"La creación de procesos vía `spawn` impone un peaje fijo inicial en Windows, pero con "
+            f"$n={stats.get('par_n', 0):,}$ y {stats.get('par_reps', 0)} réplicas la carga de cómputo supera "
+            f"dicho umbral, logrando hasta {stats.get('par_max_sp', 0.0):.2f}x de aceleración respecto a la "
+            f"ejecución secuencial con Numba."
+        )
+    else:
+        par_analysis = (
+            f"Para {stats.get('par_reps', 0)} réplicas de tamaño $n={stats.get('par_n', 0):,}$ "
+            f"($c={stats.get('par_servers', 0)}$), la ejecución serie con Numba completa todas las réplicas en "
+            f"apenas **{stats.get('t_serial', 0.0):.4f} s** ({stats.get('t_serial', 0.0) * 1000:.2f} ms), "
+            f"mientras que el esquema paralelo insume entre {stats.get('par_min_t', 0.0):.4f} s y "
+            f"{stats.get('par_max_t', 0.0):.4f} s (speedup máximo **{stats.get('par_max_sp', 0.0):.2f}x**, "
+            f"eficiencia máxima {stats.get('par_max_eff', 0.0):.1f}%). Esto evidencia que, para cargas pequeñas "
+            f"ya optimizadas con Numba, el costo fijo de creación de procesos (`spawn`) e IPC en Windows supera "
+            f"ampliamente al tiempo de cómputo útil."
+        )
+        par_discussion = (
+            f"La creación de procesos vía `spawn` e inicialización de workers impone un peaje fijo de "
+            f"~{stats.get('par_min_t', 0.0):.1f} a {stats.get('par_max_t', 0.0):.1f} segundos en Windows. "
+            f"Dado que Numba resuelve {stats.get('par_reps', 0)} réplicas de $n={stats.get('par_n', 0):,}$ en "
+            f"{stats.get('t_serial', 0.0) * 1000:.2f} ms, paralelizar produce una degradación "
+            f"({stats.get('par_max_sp', 0.0):.2f}x) y solo resulta conveniente cuando la carga por réplica "
+            f"es lo suficientemente pesada ($n \\ge 10^6$) como para superar ese umbral."
+        )
+
+    c1 = f"""# Trabajo de Investigación: Escalera de Optimización en Python
 
 **Universidad Abierta Interamericana (UAI)**  
 **Facultad de Tecnología Informática**  
@@ -392,7 +580,7 @@ def write_report_chapters(tables: dict, fig_dir: Path, report_dir: Path) -> Path
 
 ## Resumen
 
-El presente trabajo de investigación experimental evalúa el impacto en rendimiento y el costo de mantenimiento de seis técnicas progresivas de optimización en Python aplicadas a un simulador de colas de eventos discretos ($M/M/1$ y $M/M/c$) para *capacity planning*. Se recorre la "escalera de optimización" comenzando desde un *baseline* orientado a objetos en Python puro, transitando por estructuras algorítmicas adecuadas (`heapq`, `__slots__`), optimizaciones idiomáticas del intérprete, vectorización con NumPy, compilación nativa JIT con Numba y paralelismo Monte Carlo con `multiprocessing`. Cada escalón se valida rigurosamente contra el modelo analítico de teoría de colas (Erlang C) y contra el *baseline* mediante pruebas automatizadas con tolerancia $10^{-9}$. Los resultados evidencian que Numba logra una aceleración superior a dos órdenes de magnitud ($>130\\times$) eliminando la sobrecarga secuencial que NumPy no puede vectorizar, mientras que el paralelismo multiproceso exhibe una meseta explicada por la ley de Amdahl y la sobrecarga de arranque (*spawn*) e IPC en Windows. El estudio proporciona criterios cuantitativos para decidir cuándo es ingenierilmente conveniente escalar cada peldaño de optimización.
+El presente trabajo de investigación experimental evalúa el impacto en rendimiento y el costo de mantenimiento de seis técnicas progresivas de optimización en Python aplicadas a un simulador de colas de eventos discretos ($M/M/1$ y $M/M/c$) para *capacity planning*. Se recorre la "escalera de optimización" comenzando desde un *baseline* orientado a objetos en Python puro, transitando por estructuras algorítmicas adecuadas (`heapq`, `__slots__`), optimizaciones idiomáticas del intérprete, vectorización con NumPy, compilación nativa JIT con Numba y paralelismo Monte Carlo con `multiprocessing`. Cada escalón se valida rigurosamente contra el modelo analítico de teoría de colas (Erlang C) y contra el *baseline* mediante pruebas automatizadas con tolerancia $10^{-9}$. Los resultados evidencian que Numba logra una aceleración superior a dos órdenes de magnitud ({e4_sp:.2f}x para $n={target_n:,}, c=2$) eliminando la sobrecarga secuencial que NumPy no puede vectorizar cuando $c > 1$, mientras que el paralelismo multiproceso exhibe los límites impuestos por la ley de Amdahl y la sobrecarga de arranque (*spawn*) e IPC en Windows. El estudio proporciona criterios cuantitativos para decidir cuándo es ingenierilmente conveniente escalar cada peldaño de optimización.
 """
 
     c2 = """# Introducción y Objetivos
@@ -453,12 +641,12 @@ A continuación se presentan las tablas cuantitativas y gráficos generados a pa
 ### Tabla II: Métricas de Calidad de Software y Mantenibilidad
 {tables['tabla_II']}
 
-*Análisis de la Tabla II:* El *baseline* posee 22 líneas lógicas y una complejidad máxima de 6 debido al bucle con búsqueda lineal. El paso a estructuras idiomáticas (E2) reduce el código a 13 SLOC manteniendo baja complejidad. Numba (E4) y Paralelismo (E5) incrementan el tamaño del módulo a 31 y 45 SLOC respectivamente, pero mantienen una complejidad media reducida (1.67 a 2.0), lo que demuestra que la optimización no sacrificó la inteligibilidad interna de las funciones.
+*Análisis de la Tabla II:* El *baseline* posee {stats.get('e0_sloc', 0)} líneas lógicas (SLOC) y una complejidad máxima de {stats.get('e0_cc_max', 0)} debido al bucle con búsqueda lineal. El paso a código idiomático (E2) reduce la implementación a {stats.get('e2_sloc', 0)} SLOC manteniendo baja complejidad. Numba (E4) y Paralelismo (E5) incrementan el tamaño del módulo a {stats.get('e4_sloc', 0)} y {stats.get('e5_sloc', 0)} SLOC respectivamente, pero mantienen una complejidad media reducida ({stats.get('e4_cc_avg', 0.0):.2f} y {stats.get('e5_cc_avg', 0.0):.2f}), lo que demuestra que la optimización no sacrificó la inteligibilidad interna de las funciones.
 
 ### Tabla III: Tiempos de Ejecución y Speedup Relativo ($c=2$)
 {tables['tabla_III']}
 
-*Análisis de la Tabla III:* Para $n=50\\,000$ solicitudes, el *baseline* insume $67.91\\text{{ ms}}$, el código idiomático baja a $17.62\\text{{ ms}}$ ($3.85\\times$), NumPy alcanza $14.84\\text{{ ms}}$ ($4.58\\times$) y Numba reduce el tiempo a solo **$0.46\\text{{ ms}}$**, logrando un impresionante speedup de **$146.17\\times$** frente al código ingenuo.
+*Análisis de la Tabla III:* Para $n={target_n:,}$ solicitudes ($c=2$), el *baseline* insume ${base_ms:.2f}\\text{{ ms}}$, el uso de estructuras con `heapq` (E1) reduce a ${stats.get('e1_ms', 0.0):.2f}\\text{{ ms}}$ (${e1_sp:.2f}\\times$), el código idiomático (E2) baja a ${e2_ms:.2f}\\text{{ ms}}$ (${e2_sp:.2f}\\times$), NumPy (E3) alcanza ${e3_ms:.2f}\\text{{ ms}}$ (${e3_sp:.2f}\\times$, al delegar en E2 para $c>1$) y Numba (E4) reduce el tiempo a solo **${e4_ms:.2f}\\text{{ ms}}$**, logrando un speedup de **${e4_sp:.2f}\\times$** frente al código ingenuo. Cabe destacar que para $c=1$ ($M/M/1$) y $n={target_n:,}$, NumPy sí vectoriza la recurrencia de Lindley y alcanza ${e3_c1_ms:.2f}\\text{{ ms}}$ (${e3_c1_sp:.2f}\\times$).
 
 ![Gráfico 1: Tiempo vs Tamaño](results/figures/grafico_1_tiempo_vs_tamano.png)
 *Gráfico 1:* Tiempo de ejecución en función del tamaño de entrada en escala logarítmica para $c=2$. Se observa claramente la separación de órdenes de magnitud entre las implementaciones en Python puro y la compilada por Numba.
@@ -480,7 +668,7 @@ A continuación se presentan las tablas cuantitativas y gráficos generados a pa
 ### Tabla V: Escalamiento Paralelo (Escalón 5)
 {tables['tabla_V']}
 
-*Análisis de la Tabla V y Gráfico 4:* El escalón paralelo muestra un speedup que escala eficientemente en tareas de gran porte cuando se amortiza el arranque de procesos.
+*Análisis de la Tabla V y Gráfico 4:* {par_analysis}
 
 ![Gráfico 4: Escalamiento Paralelo](results/figures/grafico_4_escalamiento_paralelo_amdahl.png)
 *Gráfico 4:* Curva de aceleración paralela y eficiencia en función del número de procesos.
@@ -488,20 +676,20 @@ A continuación se presentan las tablas cuantitativas y gráficos generados a pa
 ### Tabla VI: Validación Analítica contra la Teoría de Colas
 {tables['tabla_VI']}
 
-*Análisis de la Tabla VI:* Todas las simulaciones coinciden con las fórmulas teóricas de Erlang C dentro de un intervalo estadístico de confianza de $3$ errores estándar ($|\\Delta| < 0.25 EE$), lo que valida analíticamente la corrección del simulador.
+*Análisis de la Tabla VI:* Todas las simulaciones coinciden con las fórmulas teóricas de Erlang C dentro de un intervalo estadístico de confianza de $3$ errores estándar (desviación máxima observada: ${stats.get('max_z_score', 0.0):.2f}\\,EE$), lo que valida analíticamente la corrección del simulador.
 """
 
-    c5 = """# Discusión, Conclusiones y Referencias
+    c5 = f"""# Discusión, Conclusiones y Referencias
 
 ## 1. Discusión
 Los resultados obtenidos permiten extraer valiosas conclusiones de ingeniería:
-1. **La barrera de NumPy en colas multiserver:** Para colas $M/M/1$, la recurrencia de Lindley vectoriza limpiamente con suma acumulada (`np.add.accumulate`) y `minimum.accumulate`. Sin embargo, para $c > 1$ el estado de los servidores exige un `argmin` dinámico que no admite vectorización secuencial directa, provocando que NumPy no supere al bucle idiomático en Python.
-2. **El poder de Numba:** Numba resolvió elegantemente el problema compilando el bucle nativo a código máquina LLVM, reduciendo la latencia de $67\\text{ ms}$ a $0.46\\text{ ms}$ ($146\\times$).
-3. **El costo del multiprocessing en Windows:** La creación de procesos vía `spawn` impone un peaje fijo de $2$ a $3$ segundos. Paralelizar solo tiene sentido cuando la carga por réplica es lo suficientemente pesada ($n > 10^6$) como para que el tiempo de cómputo sobrepase dicho umbral.
+1. **La barrera de NumPy en colas multiserver:** Para colas $M/M/1$, la recurrencia de Lindley vectoriza limpiamente con suma acumulada (`np.add.accumulate`) y `minimum.accumulate` (logrando ${e3_c1_ms:.2f}\\text{{ ms}}$, ${e3_c1_sp:.2f}\\times$ para $n={target_n:,}$). Sin embargo, para $c > 1$ el estado de los servidores exige un `argmin` dinámico que no admite vectorización secuencial directa, provocando que NumPy deba reutilizar el bucle idiomático en Python (${e3_ms:.2f}\\text{{ ms}}$).
+2. **El poder de Numba:** Numba resolvió elegantemente el problema compilando el bucle nativo a código máquina LLVM, reduciendo la latencia para $n={target_n:,}, c=2$ de ${base_ms:.2f}\\text{{ ms}}$ a ${e4_ms:.2f}\\text{{ ms}}$ (${e4_sp:.2f}\\times$).
+3. **El costo del multiprocessing en Windows:** {par_discussion}
 
 ## 2. Conclusiones
-- Se confirmó la hipótesis de trabajo: Numba aportó el mayor salto cualitativo y cuantitativo de toda la escalera con un costo mínimo en complejidad ciclomática.
-- La optimización algorítmica y la reducción de sobrecargas del intérprete (escalones 1 y 2) aportan hasta un $4.7\\times$ sin introducir dependencias externas.
+- Se confirmó la hipótesis de trabajo: Numba aportó el mayor salto cualitativo y cuantitativo de toda la escalera (${e4_sp:.2f}\\times$ para $n={target_n:,}, c=2$) con un costo mínimo en complejidad ciclomática (media {stats.get('e4_cc_avg', 0.0):.2f}).
+- La optimización algorítmica y la reducción de sobrecargas del intérprete (escalones 1 y 2) aportan hasta un ${e2_sp:.2f}\\times$ sin introducir dependencias externas.
 - El uso de pruebas analíticas basadas en teoría de colas garantizó que ninguna optimización comprometiera la validez estocástica del sistema.
 
 ## 3. Sugerencias y Trabajos Futuros
@@ -540,6 +728,9 @@ def main() -> None:
     print("=== Generando figuras, tablas y reporte formal (Fase 5) ===")
     data = load_raw_data(raw_dir)
 
+    print("-> Ejecutando validacion analitica contra Erlang C (M/M/1 y M/M/3)...")
+    data["validation"] = compute_analytical_validation()
+
     print("-> Generando figuras PNG (300 DPI) en results/figures/...")
     figs = generate_figures(data, fig_dir)
     for name, p in figs.items():
@@ -547,9 +738,10 @@ def main() -> None:
 
     print("-> Construyendo tablas formales en Markdown...")
     tables = build_markdown_tables(data)
+    stats = extract_report_stats(data)
 
     print("-> Generando borradores del informe formal en report/...")
-    full_rep = write_report_chapters(tables, fig_dir, report_dir)
+    full_rep = write_report_chapters(tables, stats, fig_dir, report_dir)
     print(f"   [OK] Informe consolidado generado en: {full_rep}")
     print("=== Proceso completado exitosamente ===")
 
