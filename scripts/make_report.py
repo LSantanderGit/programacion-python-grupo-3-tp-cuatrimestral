@@ -217,27 +217,35 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
     df_scaling = data["scaling"]
     if not df_scaling.empty:
         fig, ax1 = plt.subplots(figsize=(8, 5))
-        par_subset = df_scaling[df_scaling["workers"] > 0].sort_values("workers")
+        sc = df_scaling if "mode" in df_scaling.columns else df_scaling.assign(mode="parallel")
+        par_subset = sc[sc["mode"] == "parallel"].sort_values("workers")
+        warm_subset = sc[sc["mode"] == "parallel_warm"].sort_values("workers")
 
         workers = par_subset["workers"].values
-        speedup = par_subset["speedup"].values
-        efficiency = par_subset["efficiency_pct"].values
-
         color_sp = "#2ca02c"
         color_eff = "#9467bd"
 
-        ax1.plot(workers, speedup, marker="o", color=color_sp, linewidth=2, label="Speedup Medido")
+        ax1.plot(workers, par_subset["speedup"].values, marker="o", linestyle="--", color="#d62728", linewidth=2,
+                 label="Speedup con spawn (pool nuevo)")
+        eff_series = par_subset["efficiency_pct"].values
+        if not warm_subset.empty:
+            ax1.plot(warm_subset["workers"].values, warm_subset["speedup"].values, marker="o", color=color_sp,
+                     linewidth=2, label="Speedup pool precalentado")
+            eff_series = warm_subset["efficiency_pct"].values
         # Linea ideal
         ax1.plot(workers, workers, linestyle=":", color="gray", label="Speedup Ideal Lineal")
+        ax1.axhline(1.0, color="black", linewidth=0.8, alpha=0.5)
         ax1.set_xlabel("Numero de Procesos Trabajadores ($p$)")
         ax1.set_ylabel("Speedup ($T_{serie} / T_{par}$)", color=color_sp)
         ax1.tick_params(axis="y", labelcolor=color_sp)
 
         ax2 = ax1.twinx()
-        ax2.plot(workers, efficiency, marker="^", linestyle="--", color=color_eff, linewidth=2, label="Eficiencia (%)")
+        eff_x = warm_subset["workers"].values if not warm_subset.empty else workers
+        ax2.plot(eff_x, eff_series, marker="^", linestyle="--", color=color_eff, linewidth=2,
+                 label="Eficiencia (%)" + (" (pool precalentado)" if not warm_subset.empty else ""))
         ax2.set_ylabel("Eficiencia (%)", color=color_eff)
         ax2.tick_params(axis="y", labelcolor=color_eff)
-        ax2.set_ylim(0, max(110, efficiency.max() * 1.1))
+        ax2.set_ylim(0, max(110, eff_series.max() * 1.1))
         ax2.grid(False)
 
         lines1, labels1 = ax1.get_legend_handles_labels()
@@ -352,7 +360,11 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
     ]
     if not df_s.empty:
         for _, row in df_s.iterrows():
-            label = "Serie (Escalón 4)" if row["workers"] == 0 else f"{int(row['workers'])} procesos"
+            if row["workers"] == 0:
+                label = "Serie (Escalón 4)"
+            else:
+                kind = "pool precalentado" if row.get("mode") == "parallel_warm" else "con spawn"
+                label = f"{int(row['workers'])} procesos ({kind})"
             t5.append(f"| **{label}** | {row['time_s']:.4f} s | {row['speedup']:.2f}x | {row['efficiency_pct']:.1f}% |")
     tables["tabla_V"] = "\n".join(t5)
 
@@ -485,7 +497,16 @@ def extract_report_stats(data: dict) -> dict:
     df_s = data.get("scaling", pd.DataFrame())
     if not df_s.empty:
         serial_row = df_s[df_s["workers"] == 0]
-        par_rows = df_s[df_s["workers"] > 0]
+        if "mode" not in df_s.columns:
+            df_s = df_s.assign(mode=df_s["workers"].map(lambda w: "serial_step4" if w == 0 else "parallel"))
+        par_rows = df_s[df_s["mode"] == "parallel"]
+        warm_rows = df_s[df_s["mode"] == "parallel_warm"]
+        if not warm_rows.empty:
+            best = warm_rows.loc[warm_rows["speedup"].idxmax()]
+            stats["warm_sp"] = float(best["speedup"])
+            stats["warm_w"] = int(best["workers"])
+            stats["warm_eff"] = float(best["efficiency_pct"])
+            stats["warm_by_w"] = {int(r["workers"]): float(r["speedup"]) for _, r in warm_rows.iterrows()}
         stats["par_n"] = int(df_s["n"].iloc[0])
         stats["par_servers"] = int(df_s["servers"].iloc[0])
         stats["par_reps"] = int(df_s["replicas"].iloc[0])
@@ -497,6 +518,11 @@ def extract_report_stats(data: dict) -> dict:
             stats["par_min_sp"] = float(par_rows["speedup"].min())
             stats["par_max_eff"] = float(par_rows["efficiency_pct"].max())
             stats["par_scales"] = stats["par_max_sp"] > 1.0
+            # Costo fijo estimado: tiempo con el menor numero de workers menos el tiempo serie
+            first = par_rows.sort_values("workers").iloc[0]
+            stats["par_overhead"] = max(float(first["time_s"]) - stats["t_serial"] / int(first["workers"]), 0.0)
+            reqs = stats["par_reps"] * stats["par_n"]
+            stats["par_breakeven"] = stats["par_overhead"] / (stats["t_serial"] / reqs) if stats["t_serial"] > 0 else 0.0
 
     # Validacion analitica
     val = data.get("validation", [])
@@ -549,12 +575,29 @@ def write_report_chapters(
             f"ampliamente al tiempo de cómputo útil."
         )
         par_discussion = (
-            f"La creación de procesos vía `spawn` e inicialización de workers impone un peaje fijo de "
-            f"~{stats.get('par_min_t', 0.0):.1f} a {stats.get('par_max_t', 0.0):.1f} segundos en Windows. "
-            f"Dado que Numba resuelve {stats.get('par_reps', 0)} réplicas de $n={stats.get('par_n', 0):,}$ en "
-            f"{stats.get('t_serial', 0.0) * 1000:.2f} ms, paralelizar produce una degradación "
-            f"({stats.get('par_max_sp', 0.0):.2f}x) y solo resulta conveniente cuando la carga por réplica "
-            f"es lo suficientemente pesada ($n \\ge 10^6$) como para superar ese umbral."
+            f"La creación de procesos vía `spawn` (reimportar NumPy y Numba en cada worker) e IPC impone un "
+            f"costo fijo estimado de ~{stats.get('par_overhead', 0.0):.1f} s en Windows, medido porque cada corrida "
+            f"crea su propio pool. Numba resuelve {stats.get('par_reps', 0)} réplicas de $n={stats.get('par_n', 0):,}$ "
+            f"en {stats.get('t_serial', 0.0) * 1000:.0f} ms, por lo que paralelizar produce una degradación "
+            f"({stats.get('par_max_sp', 0.0):.2f}x como mejor caso). El speedup es menor a 1, así que no se trata del "
+            f"techo de Amdahl sino de un costo fijo mayor que el cómputo útil: solo convendría con un total de "
+            f"$R \\cdot n$ muy superior a ~{stats.get('par_breakeven', 0.0):.1e} requests, o reutilizando un pool ya creado."
+        )
+
+    if stats.get("warm_sp"):
+        by_w = stats["warm_by_w"]
+        pts = ", ".join(f"{by_w[w]:.2f}x con {w}" for w in sorted(by_w) if w in (2, 4, 8))
+        par_analysis += (
+            f" Al excluir el costo de `spawn` (pool ya creado y precalentado) el mismo trabajo sí escala: {pts} "
+            f"procesos, con un máximo de **{stats['warm_sp']:.2f}x** a {stats['warm_w']} procesos "
+            f"(eficiencia {stats['warm_eff']:.0f}%). La eficiencia cae por la fracción no paralelizable "
+            f"(Amdahl), la contención de caché y memoria compartida, el uso de núcleos eficientes/lógicos y el "
+            f"desbalance de carga ({stats.get('par_reps', 0)} réplicas repartidas entre los workers)."
+        )
+        par_discussion += (
+            f" Con un pool precalentado el speedup llega a {stats['warm_sp']:.2f}x ({stats['warm_w']} procesos): "
+            f"el paralelismo es útil para simulaciones Monte Carlo repetidas, pero solo si el costo de crear el pool "
+            f"se amortiza (pool reutilizado o carga total mucho mayor)."
         )
 
     c1 = f"""# Trabajo de Investigación: Escalera de Optimización en Python

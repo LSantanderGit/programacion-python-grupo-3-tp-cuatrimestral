@@ -93,11 +93,11 @@ A continuación se detallan todas las decisiones arquitectónicas registradas en
 ## 4. Hallazgos Empíricos Clave del Proyecto
 
 1. **El salto de Numba ($>130\times$ de aceleración):**
-   Numba representó el hito más significativo de la escalera. Compilar el bucle secuencial a instrucciones de máquina nativas con LLVM redujo el tiempo de $50\,000$ eventos de $67.9\text{ ms}$ (baseline) a solo **$0.46\text{ ms}$**, con un impacto mínimo en mantenibilidad (31 líneas de código y complejidad ciclomática media de solo 1.67).
+   Numba representó el hito más significativo de la escalera. Compilar el bucle secuencial a instrucciones de máquina nativas con LLVM redujo el tiempo de $10^6$ eventos ($c=2$) de $903.5\text{ ms}$ (baseline) a solo **$6.84\text{ ms}$** ($132\times$, corrida `full` en i5-13400), con un impacto mínimo en mantenibilidad (31 líneas de código y complejidad ciclomática media de solo 1.67).
 2. **La limitación intrínseca de NumPy en colas concurrentes ($c > 1$):**
    NumPy demostró ser imbatible para operaciones vectoriales independientes o acumulaciones lineales ($c=1$). Sin embargo, ante la necesidad de actualizar dinámicamente un estado de $c$ servidores mediante `argmin`, la vectorización en bloque se quiebra, demostrando que *"vectorizar no siempre es posible cuando existe dependencia temporal de estado"*.
 3. **El costo del multiprocessing en Windows (`spawn`):**
-   La creación de procesos en Windows toma entre $2$ y $3$ segundos. En tareas pequeñas o medianas, el tiempo de inicialización de intérpretes y serialización de memoria anula la ganancia. El paralelismo solo resulta rentable para simulaciones pesadas ($n \ge 10^6$), donde el speedup escala de manera casi lineal con 2 procesos ($1.81\times$, $90.7\%$ de eficiencia) y encuentra su meseta física en los 6 núcleos de la CPU ($2.50\times$), degradándose si se saturan los 12 hilos lógicos por contención en caché L3.
+   Se midieron dos modos con $R=24$, $n=10^6$, $c=8$ (serie con Numba: $0.92\text{ s}$). Creando el pool en cada corrida (con `spawn`) el speedup es menor a 1 (mejor caso ~$0.74\times$): reimportar NumPy y Numba en cada worker cuesta ~1 a 2 s fijos, mas que el computo util. Con el pool ya creado y precalentado, el mismo trabajo escala: $1.96\times$ con 2 procesos, $3.37\times$ con 4, $5.02\times$ con 8 ($63\%$ de eficiencia) y $5.59\times$ con 16 ($35\%$). La curva es sublineal por la fraccion no paralelizable (Amdahl), contencion de cache/memoria, nucleos P/E y logicos, y desbalance de carga (24 replicas entre 16 workers). Un speedup menor a 1 no es el techo de Amdahl: es un costo fijo mayor que el computo; el paralelismo solo conviene si el pool se reutiliza o la carga total es muy superior a ~$4\cdot 10^7$ requests.
 
 ---
 

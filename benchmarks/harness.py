@@ -5,6 +5,7 @@ import json
 import random
 import time
 import tracemalloc
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -227,6 +228,28 @@ def measure_parallel_scaling(profile: BenchmarkProfile) -> list[dict[str, Any]]:
                 "time_s": t_par,
                 "speedup": round(sp, 4),
                 "efficiency_pct": round(eff, 2),
+            }
+        )
+
+        # Pool precalentado: el cronometro excluye el spawn e imports de los workers
+        with ProcessPoolExecutor(max_workers=p) as pool:
+            step5_parallel.warm_pool(pool, p)
+            t0 = time.perf_counter()
+            step5_parallel.simulate_replicas_in_pool(
+                pool, n, arrival_rate, SERVICE_RATE_DEFAULT, servers, seeds, return_metrics=True
+            )
+            t_warm = time.perf_counter() - t0
+        sp_w = t_serial / t_warm if t_warm > 0 else 0.0
+        records.append(
+            {
+                "workers": p,
+                "mode": "parallel_warm",
+                "n": n,
+                "servers": servers,
+                "replicas": r_reps,
+                "time_s": t_warm,
+                "speedup": round(sp_w, 4),
+                "efficiency_pct": round((sp_w / p) * 100.0, 2),
             }
         )
     return records

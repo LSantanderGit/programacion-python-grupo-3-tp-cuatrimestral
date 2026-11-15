@@ -1,6 +1,7 @@
 """Escalon 5: Paralelismo (replicas Monte Carlo con ProcessPoolExecutor)."""
 
-from concurrent.futures import ProcessPoolExecutor
+import time
+from concurrent.futures import Executor, ProcessPoolExecutor
 from typing import Any
 
 import numpy as np
@@ -67,3 +68,32 @@ def simulate_replicas_serial(
         for s in seeds
     ]
     return [_worker_simulate(t) for t in tasks]
+
+
+def _warm_task(_: int) -> int:
+    """Fuerza el arranque del worker (imports + JIT) y lo mantiene ocupado para que el pool cree todos."""
+    step4_simulate(np.array([0.0, 1.0]), np.array([1.0, 1.0]), 2)
+    time.sleep(0.3)
+    return 0
+
+
+def warm_pool(executor: ProcessPoolExecutor, workers: int) -> None:
+    """Precalienta ``workers`` procesos del pool (excluye el costo de spawn de la medicion)."""
+    list(executor.map(_warm_task, range(workers)))
+
+
+def simulate_replicas_in_pool(
+    executor: Executor,
+    n_requests: int,
+    arrival_rate: float,
+    service_rate: float,
+    servers: int,
+    seeds: list[np.random.SeedSequence] | list[int],
+    return_metrics: bool = False,
+) -> list[Any]:
+    """Como ``simulate_replicas`` pero sobre un pool ya creado y precalentado."""
+    tasks = [
+        (n_requests, arrival_rate, service_rate, servers, s, return_metrics)
+        for s in seeds
+    ]
+    return list(executor.map(_worker_simulate, tasks))

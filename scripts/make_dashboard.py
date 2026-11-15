@@ -46,6 +46,49 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                         max_speedup = f"{t0 / t4:.1f}x"
                         min_time_ms = f"{t4 * 1000:.2f} ms"
 
+    # Estadisticas derivadas para los textos (nada hardcodeado de corridas previas)
+    n_ref, t_base_ms, t_numba_ms, sp_numba, sp_e1, sp_e2 = 0, 0.0, 0.0, 0.0, 0.0, 0.0
+    if not df_times.empty:
+        c2 = df_times[df_times["servers"] == 2]
+
+        def _med(step: str, n: int) -> float:
+            return float(c2[(c2["step"] == step) & (c2["n"] == n)]["median_s"].values[0])
+
+        common = set(c2[c2["step"] == "step0_naive"]["n"]) & set(c2[c2["step"] == "step4_numba"]["n"])
+        if common:
+            n_ref = max(common)
+            t0 = _med("step0_naive", n_ref)
+            t_base_ms, t_numba_ms = t0 * 1000, _med("step4_numba", n_ref) * 1000
+            sp_numba = t0 / _med("step4_numba", n_ref)
+            sp_e1 = t0 / _med("step1_datastructs", n_ref)
+            sp_e2 = t0 / _med("step2_idiomatic", n_ref)
+
+    sc_serial = sc_best_sp = sc_min_t = sc_max_t = sc_rate = sc_over = 0.0
+    sc_reps = sc_n = 0
+    warm_sp = warm_eff = 0.0
+    warm_w = 0
+    if not df_scaling.empty:
+        if "mode" not in df_scaling.columns:
+            df_scaling = df_scaling.assign(mode=df_scaling["workers"].map(lambda w: "serial_step4" if w == 0 else "parallel"))
+        par = df_scaling[df_scaling["mode"] == "parallel"]
+        warm = df_scaling[df_scaling["mode"] == "parallel_warm"]
+        if not warm.empty:
+            wb = warm.loc[warm["speedup"].idxmax()]
+            warm_sp, warm_w, warm_eff = float(wb["speedup"]), int(wb["workers"]), float(wb["efficiency_pct"])
+        ser = df_scaling[df_scaling["workers"] == 0]
+        if not par.empty and not ser.empty:
+            sc_serial = float(ser["time_s"].iloc[0])
+            sc_best_sp = float(par["speedup"].max())
+            sc_min_t, sc_max_t = float(par["time_s"].min()), float(par["time_s"].max())
+            sc_reps, sc_n = int(ser["replicas"].iloc[0]), int(ser["n"].iloc[0])
+            sc_rate = sc_serial / (sc_reps * sc_n)  # s por request en Numba
+            first = par.sort_values("workers").iloc[0]
+            sc_over = max(float(first["time_s"]) - sc_serial / int(first["workers"]), 0.0)
+    par_wins = sc_best_sp > 1.0
+    n_ref_tex = f"{n_ref:,}".replace(",", r"\,")
+    sc_n_tex = f"{sc_n:,}".replace(",", r"\,")
+    breakeven = f"{sc_over / sc_rate:.1e}" if sc_rate > 0 else "N/D"
+
     # Construir filas de tabla de tiempos
     times_table_rows = []
     if not df_times.empty:
@@ -106,6 +149,11 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TP Cuatrimestral: Escalera de Optimización | Dashboard</title>
+    <!-- KaTeX: renderiza las formulas $...$ -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {{delimiters: [{{left: '$', right: '$', display: false}}]}});"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -191,7 +239,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700/80 shadow-lg">
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tiempo Mínimo (50k)</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tiempo Mínimo (n={n_ref:,})</span>
                     <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400"><i class="fa-solid fa-stopwatch"></i></span>
                 </div>
                 <div class="text-3xl font-extrabold text-white mt-2">{min_time_ms}</div>
@@ -213,12 +261,12 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700/80 shadow-lg">
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Límite Amdahl</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mejor Speedup Paralelo (E5)</span>
                     <span class="p-2 rounded-lg bg-purple-500/10 text-purple-400"><i class="fa-solid fa-microchip"></i></span>
                 </div>
-                <div class="text-3xl font-extrabold text-white mt-2">2.50x</div>
+                <div class="text-3xl font-extrabold text-white mt-2">{(f"{warm_sp:.2f}x" if warm_w else f"{sc_best_sp:.3f}x")}</div>
                 <span class="text-xs text-purple-300 flex items-center gap-1 mt-1 font-medium">
-                    Meseta en núcleos físicos (6 cores)
+                    {(f"Pool precalentado, {warm_w} procesos ({warm_eff:.0f}% efic.). Con spawn: {sc_best_sp:.2f}x") if warm_w else ('Escala con procesos' if par_wins else 'Dominado por costo de spawn (peor que serie)')}
                 </span>
             </div>
         </section>
@@ -235,7 +283,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
                 <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
                     <span class="text-slate-400 block">Topología</span>
-                    <span class="font-semibold text-slate-200 mt-1 block">{env.get('cpu_physical_cores', 6)} P-cores / {env.get('cpu_logical_cores', 12)} Hilos</span>
+                    <span class="font-semibold text-slate-200 mt-1 block">{env.get('cpu_physical_cores', 6)} núcleos / {env.get('cpu_logical_cores', 12)} hilos</span>
                 </div>
                 <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
                     <span class="text-slate-400 block">Memoria RAM</span>
@@ -279,10 +327,10 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                                 <i class="fa-solid fa-magnifying-glass-chart"></i> Análisis del Gráfico 1
                             </h4>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Se evidencia una separación neta de más de <strong>dos órdenes de magnitud</strong> entre las implementaciones en Python puro y la versión compilada nativamente con <strong>Numba JIT</strong>.
+                                Se evidencia una separación de casi <strong>dos órdenes de magnitud</strong> entre el baseline en Python puro y la versión compilada con <strong>Numba JIT</strong>.
                             </p>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Para $n=50\\,000$, el <em>baseline</em> requiere <strong>67.9 ms</strong>, mientras que Numba completa la simulación estocástica completa en apenas <strong>0.46 ms</strong> ($146\times$).
+                                Para $n={n_ref_tex}$, el <em>baseline</em> requiere <strong>{t_base_ms:.1f} ms</strong>, mientras que Numba completa la misma simulación en <strong>{t_numba_ms:.2f} ms</strong> (${sp_numba:.0f}\\times$).
                             </p>
                         </div>
                     </div>
@@ -297,13 +345,13 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                         <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
                             <i class="fa-solid fa-chart-simple text-emerald-400"></i> Gráfico 2: Aceleración por Escalón vs Baseline
                         </h3>
-                        <p class="text-xs text-slate-400 mb-4">Speedup ($T_{{base}} / T_{{opt}}$) para $n=50\\,000, c=2$</p>
+                        <p class="text-xs text-slate-400 mb-4">Speedup ($T_{{base}} / T_{{opt}}$) para $n={n_ref_tex}, c=2$</p>
                         <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700/60">
                             <img src="figures/grafico_2_speedup_por_escalon.png" alt="Grafico 2" class="w-full rounded-lg">
                         </div>
                     </div>
                     <div class="mt-4 bg-slate-900/50 p-3 rounded-lg text-xs text-slate-300 border border-slate-700/40">
-                        <strong>Hallazgo:</strong> Estructuras de datos (E1) y Python idiomático (E2) aportan hasta $4.7\times$ sin dependencias. Numba (E4) alcanza el récord de la escalera superando a NumPy.
+                        <strong>Hallazgo:</strong> Python idiomático (E2) aporta ${sp_e2:.1f}\\times$ sin dependencias; E1 (deque, heapq, objetos) rinde ${sp_e1:.2f}\\times$, es decir {'mejora' if sp_e1 > 1 else 'empeora'} al baseline para este $n$. Numba (E4) alcanza el récord de la escalera.
                     </div>
                 </div>
 
@@ -319,7 +367,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                         </div>
                     </div>
                     <div class="mt-4 bg-slate-900/50 p-3 rounded-lg text-xs text-slate-300 border border-slate-700/40">
-                        <strong>Hallazgo:</strong> Escalamiento cuasi-lineal con 2 núcleos ($1.81\times$, $90.7\\%$ eficiencia). Se estabiliza en los 6 núcleos físicos ($2.50\times$) y degrada con Hyper-Threading (12 lógicos).
+                        <strong>Hallazgo:</strong> {sc_reps} réplicas de $n={sc_n_tex}$: serie con Numba {sc_serial * 1000:.1f} ms vs. {sc_min_t:.2f} a {sc_max_t:.2f} s en paralelo creando el pool (mejor speedup ${sc_best_sp:.2f}\\times$). {f"Con el pool precalentado escala hasta ${warm_sp:.2f}\\times$ a {warm_w} procesos ({warm_eff:.0f}% de eficiencia)." if warm_w else "El costo fijo de crear procesos supera al cómputo útil."}
                     </div>
                 </div>
             </div>
@@ -338,7 +386,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                         </div>
                     </div>
                     <div class="mt-4 bg-slate-900/50 p-3 rounded-lg text-xs text-slate-300 border border-slate-700/40">
-                        <strong>Análisis:</strong> Acelerar $146\times$ con Numba solo requirió 31 SLOC con complejidad ciclomática de 1.67, desmintiendo que la optimización requiera código críptico o inmanejable.
+                        <strong>Análisis:</strong> Acelerar ${sp_numba:.0f}\\times$ con Numba solo requirió 31 SLOC con complejidad ciclomática de 1.67, desmintiendo que la optimización requiera código críptico o inmanejable.
                     </div>
                 </div>
 
@@ -436,7 +484,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                             Numba JIT resolvió el dilema compilando el bucle nativo secuencial con LLVM directamente a instrucciones de máquina.
                         </p>
                         <p>
-                            Logró una aceleración de más de <strong>$140\\times$</strong> frente al baseline con un costo de solo 31 líneas lógicas de código y baja complejidad ciclomática.
+                            Logró una aceleración de <strong>${sp_numba:.0f}\\times$</strong> frente al baseline con un costo de solo 31 líneas lógicas de código y baja complejidad ciclomática.
                         </p>
                     </div>
 
@@ -445,10 +493,10 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                             <i class="fa-solid fa-network-wired text-purple-400"></i> Amdahl y el Costo de Spawn
                         </h4>
                         <p>
-                            En Windows, crear procesos con <code>spawn</code> introduce una penalización fija de 2 a 3 segundos. Paralelizar solo conviene con réplicas muy pesadas ($n > 10^6$).
+                            En Windows, crear procesos con <code>spawn</code> (reimportar NumPy/Numba en cada worker) introduce un costo fijo estimado de ~{sc_over:.1f} s (cada corrida crea su pool). Con Numba a ~{sc_rate * 1e9:.1f} ns por request (incluye generar la carga), solo conviene paralelizar si el total de requests ($R \\cdot n$) es del orden de {breakeven} o más.
                         </p>
                         <p>
-                            La curva de speedup se satura en los núcleos físicos de la CPU (6 cores), degradando con Hyper-Threading debido a la contención en caché L3 y memoria.
+                            Con spawn el speedup es {sc_best_sp:.2f}x (menor a 1): es sobrecarga de arranque, no el límite de Amdahl. {f"Excluyendo el arranque (pool precalentado) llega a {warm_sp:.2f}x con {warm_w} procesos: sublineal por la fracción no paralelizable, contención de caché/memoria, núcleos eficientes y lógicos, y desbalance de carga ({sc_reps} réplicas)." if warm_w else ""}
                         </p>
                     </div>
                 </div>

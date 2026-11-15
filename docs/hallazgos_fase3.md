@@ -3,6 +3,8 @@
 > Fecha de medición: 2026-11-12  
 > Entorno de prueba: Windows 10, Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz (6 núcleos físicos, 12 núcleos lógicos), 7.76 GB RAM, Python 3.12.13, NumPy 2.5.4, Numba 0.68.1.
 
+> **Nota (2026-11-14):** registro histórico de una medición anterior (i5-10500T, pool de procesos precalentado, $n=2\cdot 10^6$). No es comparable con la corrida actual de `results/raw` (i5-13400, el pool se crea dentro de la medición, perfil `full`), donde el paralelismo no supera a la serie (mejor $0.45\times$). La afirmación de que la curva "se estabiliza en los núcleos físicos" vale solo para esa configuración con pool precalentado.
+
 ---
 
 ## 1. Escalón 4: Compilación JIT con Numba (`step4_numba.py`)
