@@ -88,12 +88,3 @@ uv run python -m scripts.smoke_benchmark
 ```bash
 uv run ruff check .
 ```
-
----
-
-## Documentación y Referencias
-- [docs/CONTEXTO.md](file:./docs/CONTEXTO.md): Contexto y consigna del trabajo de investigación.
-- [docs/decisiones.md](file:./docs/decisiones.md): Registro histórico de decisiones técnicas cerradas (D1 a D23).
-- [docs/diferencias_y_decisiones_proyecto.md](file:./docs/diferencias_y_decisiones_proyecto.md): Informe exhaustivo de evolución, diferencias respecto al prompt inicial y justificación de decisiones.
-- [docs/hallazgos_fase3.md](file:./docs/hallazgos_fase3.md): Detalle empírico de las mediciones de Numba, warm-up y escalamiento paralelo.
-- [docs/propuesta_presentacion.md](file:./docs/propuesta_presentacion.md): Estructura y notas para la presentación oral ante la cátedra.

@@ -1,17 +1,9 @@
-"""Generacion de la carga de trabajo (unica fuente de aleatoriedad del proyecto)."""
-
 import numpy as np
 
 
 def generate_workload(
     n_requests: int, arrival_rate: float, service_rate: float, seed: int | np.random.SeedSequence
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Genera llegadas y servicios exponenciales.
-
-    Devuelve ``(arrivals, services)``: ``arrivals`` son tiempos absolutos de llegada
-    (suma acumulada de interarribos exponenciales de tasa ``arrival_rate``) y
-    ``services`` son duraciones exponenciales de tasa ``service_rate``.
-    """
     if n_requests <= 0:
         raise ValueError("n_requests debe ser positivo")
     if arrival_rate <= 0 or service_rate <= 0:
@@ -23,5 +15,4 @@ def generate_workload(
 
 
 def spawn_seeds(seed: int, n: int) -> list[np.random.SeedSequence]:
-    """Devuelve ``n`` semillas hijas independientes a partir de ``seed`` (una por replica)."""
     return np.random.SeedSequence(seed).spawn(n)

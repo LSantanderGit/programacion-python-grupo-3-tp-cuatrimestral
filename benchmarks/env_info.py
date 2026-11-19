@@ -1,5 +1,3 @@
-"""Captura automatica de informacion del entorno de ejecucion (D8)."""
-
 import json
 import platform
 import sys
@@ -13,7 +11,6 @@ import psutil
 
 
 def get_env_info() -> dict[str, Any]:
-    """Obtiene especificaciones del hardware, sistema operativo y versiones de software."""
     cpu = cpuinfo.get_cpu_info()
     mem = psutil.virtual_memory()
     return {
@@ -32,7 +29,6 @@ def get_env_info() -> dict[str, Any]:
 
 
 def save_env_info(output_dir: Path | str = "results/raw") -> Path:
-    """Guarda la informacion del entorno en env.json dentro de output_dir."""
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     file_path = out_path / "env.json"

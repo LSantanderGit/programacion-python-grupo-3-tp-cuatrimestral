@@ -1,5 +1,3 @@
-"""Harness de medicion rigurosa de tiempo, memoria y metricas de codigo."""
-
 import csv
 import json
 import random
@@ -50,7 +48,6 @@ DEPENDENCIES_MAP = {
 
 
 def compute_code_metrics(src_dir: str = "src/queue_sim") -> list[dict[str, Any]]:
-    """Calcula metricas de software con radon: LOC, SLOC, complejidad ciclomica y dependencias."""
     metrics_list = []
     base_path = Path(src_dir)
     step_files = [
@@ -89,7 +86,6 @@ def compute_code_metrics(src_dir: str = "src/queue_sim") -> list[dict[str, Any]]
 
 
 def measure_times(profile: BenchmarkProfile) -> list[dict[str, Any]]:
-    """Mide tiempos de ejecucion para la matriz de tamanos con orden intercalado."""
     step4_numba.warmup()
     records = []
 
@@ -99,7 +95,6 @@ def measure_times(profile: BenchmarkProfile) -> list[dict[str, Any]]:
         arrival_rate = RHO_DEFAULT * servers * SERVICE_RATE_DEFAULT
 
         for n in all_sizes:
-            # Determinamos que escalones admiten este tamano
             active_steps = []
             for name, func, is_fast in STEPS:
                 if is_fast and n in profile.sizes_fast or (not is_fast) and n in profile.sizes_slow:
@@ -112,10 +107,8 @@ def measure_times(profile: BenchmarkProfile) -> list[dict[str, Any]]:
                 n, arrival_rate, SERVICE_RATE_DEFAULT, seed=BASE_SEED
             )
 
-            # Acumuladores de repeticiones por escalon
             times_by_step = {name: [] for name, _ in active_steps}
 
-            # Ejecucion con orden intercalado para mitigar thermal throttling
             for rep in range(profile.reps):
                 order = list(active_steps)
                 random.shuffle(order)
@@ -144,11 +137,9 @@ def measure_times(profile: BenchmarkProfile) -> list[dict[str, Any]]:
 
 
 def measure_memory(profile: BenchmarkProfile) -> list[dict[str, Any]]:
-    """Mide la memoria pico asignada con tracemalloc para cada escalon."""
     step4_numba.warmup()
     records = []
 
-    # Se mide sobre una muestra representativa de tamanos
     test_sizes = [s for s in [1_000, 10_000, 50_000] if s in profile.sizes_slow]
     servers = 2
     arrival_rate = RHO_DEFAULT * servers * SERVICE_RATE_DEFAULT
@@ -175,7 +166,6 @@ def measure_memory(profile: BenchmarkProfile) -> list[dict[str, Any]]:
 
 
 def measure_parallel_scaling(profile: BenchmarkProfile) -> list[dict[str, Any]]:
-    """Mide el escalamiento paralelo (speedup y eficiencia) para el escalon 5."""
     records = []
     n = profile.parallel_n
     servers = profile.parallel_servers
@@ -183,7 +173,6 @@ def measure_parallel_scaling(profile: BenchmarkProfile) -> list[dict[str, Any]]:
     arrival_rate = RHO_DEFAULT * servers * SERVICE_RATE_DEFAULT
     seeds = spawn_seeds(BASE_SEED, r_reps)
 
-    # Medir serie con escalon 4
     t0 = time.perf_counter()
     step5_parallel.simulate_replicas_serial(
         n, arrival_rate, SERVICE_RATE_DEFAULT, servers, seeds, return_metrics=True
@@ -231,7 +220,6 @@ def measure_parallel_scaling(profile: BenchmarkProfile) -> list[dict[str, Any]]:
             }
         )
 
-        # Pool precalentado: el cronometro excluye el spawn e imports de los workers
         with ProcessPoolExecutor(max_workers=p) as pool:
             step5_parallel.warm_pool(pool, p)
             t0 = time.perf_counter()
@@ -256,7 +244,6 @@ def measure_parallel_scaling(profile: BenchmarkProfile) -> list[dict[str, Any]]:
 
 
 def export_csv(data: list[dict[str, Any]], filepath: Path) -> None:
-    """Exporta una lista de diccionarios a un archivo CSV."""
     if not data:
         return
     filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -270,33 +257,27 @@ def export_csv(data: list[dict[str, Any]], filepath: Path) -> None:
 def run_all_benchmarks(
     mode: str = "quick", output_dir: str = "results/raw"
 ) -> dict[str, Any]:
-    """Ejecuta toda la bateria de mediciones y guarda los resultados crudos."""
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     profile = get_profile(mode)
     print(f"=== Iniciando benchmarks (Perfil: {profile.name.upper()}) ===")
 
-    # 1. Guardar entorno
     save_env_info(out_dir)
 
-    # 2. Metricas de codigo
     print("-> Calculando metricas de codigo con radon...")
     code_metrics = compute_code_metrics()
     with open(out_dir / "code_metrics.json", "w", encoding="utf-8") as f:
         json.dump(code_metrics, f, indent=2, ensure_ascii=False)
 
-    # 3. Medicion de memoria
     print("-> Midiendo memoria pico con tracemalloc...")
     mem_records = measure_memory(profile)
     export_csv(mem_records, out_dir / "benchmark_memory.csv")
 
-    # 4. Medicion de tiempos
     print("-> Midiendo tiempos de ejecucion (interleaved)...")
     time_records = measure_times(profile)
     export_csv(time_records, out_dir / "benchmark_times.csv")
 
-    # 5. Escalamiento paralelo
     print("-> Midiendo escalamiento paralelo (escalon 5)...")
     scaling_records = measure_parallel_scaling(profile)
     export_csv(scaling_records, out_dir / "parallel_scaling.csv")

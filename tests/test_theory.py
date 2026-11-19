@@ -18,7 +18,6 @@ def test_mmc_con_c1_coincide_con_mm1():
 
 
 def test_mmc_c2_a_mano():
-    # lambda=1, mu=1, c=2: a=1, rho=0.5, Erlang C = 1/3, Wq = (1/3)/(2-1) = 1/3
     r = mmc(1.0, 1.0, 2)
     assert r["rho"] == pytest.approx(0.5)
     assert r["P_wait"] == pytest.approx(1 / 3)

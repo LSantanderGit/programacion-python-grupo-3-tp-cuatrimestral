@@ -1,10 +1,3 @@
-"""Benchmark de humo para CI con verificacion de ratios de rendimiento (D9).
-
-Verifica que el escalon 4 (Numba) sea al menos un factor X mas rapido que el
-escalon 1 (Estructuras de datos) sobre las mismas entradas compartidas, evitando
-fallos espurios por fluctuaciones de tiempo absoluto en runners virtuales.
-"""
-
 import sys
 import time
 
@@ -15,16 +8,12 @@ from queue_sim.workload import generate_workload
 
 
 def run_smoke_benchmark(n: int = 20_000, servers: int = 2, min_ratio: float = 5.0) -> bool:
-    """Ejecuta una corrida corta de verificacion de regresion por ratio."""
     print(f"=== Ejecutando Smoke Benchmark (n={n:,}, servers={servers}, min_ratio={min_ratio}x) ===")
 
-    # 1. Warm-up obligatorio de Numba
     step4_numba.warmup()
 
-    # 2. Generar carga compartida
     arrivals, services = generate_workload(n, 0.75 * servers, 1.0, seed=42)
 
-    # 3. Medir Escalon 1 (3 repeticiones, mediana)
     t1_list = []
     for _ in range(3):
         t0 = time.perf_counter()
@@ -32,7 +21,6 @@ def run_smoke_benchmark(n: int = 20_000, servers: int = 2, min_ratio: float = 5.
         t1_list.append(time.perf_counter() - t0)
     t1_med = float(np.median(t1_list))
 
-    # 4. Medir Escalon 4 (3 repeticiones, mediana)
     t4_list = []
     for _ in range(3):
         t0 = time.perf_counter()

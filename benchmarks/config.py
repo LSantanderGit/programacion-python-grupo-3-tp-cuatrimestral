@@ -1,5 +1,3 @@
-"""Configuracion de la matriz de tamanos y perfiles de benchmarks (D6)."""
-
 from dataclasses import dataclass, field
 
 import psutil
@@ -7,8 +5,6 @@ import psutil
 
 @dataclass(frozen=True)
 class BenchmarkProfile:
-    """Configuracion de parametros para un perfil de ejecucion de benchmarks."""
-
     name: str
     reps: int
     sizes_slow: list[int]
@@ -21,7 +17,6 @@ class BenchmarkProfile:
 
 
 def get_profile(mode: str = "quick") -> BenchmarkProfile:
-    """Devuelve el perfil de configuracion para el modo especificado ('quick' o 'full')."""
     logical_cores = psutil.cpu_count(logical=True) or 4
     worker_candidates = [1, 2, 4, 8, logical_cores, 16]
     workers = sorted(set(worker_candidates))
@@ -54,7 +49,6 @@ def get_profile(mode: str = "quick") -> BenchmarkProfile:
         raise ValueError(f"Modo desconocido: '{mode}'. Opciones validas: 'quick', 'full'.")
 
 
-# Constantes comunes del experimento
 RHO_DEFAULT = 0.75
 SERVICE_RATE_DEFAULT = 1.0
 BASE_SEED = 2026

@@ -19,7 +19,6 @@ def test_estadistica_exponencial():
     interarribos = np.diff(arrivals, prepend=0.0)
     assert interarribos.mean() == pytest.approx(1 / 0.7, rel=0.02)
     assert services.mean() == pytest.approx(1.0, rel=0.02)
-    # exponencial: desvio estandar ~ media
     assert services.std() == pytest.approx(1.0, rel=0.03)
 
 

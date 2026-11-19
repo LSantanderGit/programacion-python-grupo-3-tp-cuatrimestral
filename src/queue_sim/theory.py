@@ -1,5 +1,3 @@
-"""Resultados analiticos de teoria de colas: M/M/1 y M/M/c (Erlang C)."""
-
 import math
 
 
@@ -16,7 +14,6 @@ def _validate(arrival_rate: float, service_rate: float, servers: int) -> None:
 
 
 def mm1(arrival_rate: float, service_rate: float) -> dict[str, float]:
-    """M/M/1: devuelve ``rho``, espera en cola ``Wq`` y tiempo en el sistema ``W``."""
     _validate(arrival_rate, service_rate, 1)
     rho = arrival_rate / service_rate
     wq = rho / (service_rate - arrival_rate)
@@ -24,11 +21,6 @@ def mm1(arrival_rate: float, service_rate: float) -> dict[str, float]:
 
 
 def mmc(arrival_rate: float, service_rate: float, servers: int) -> dict[str, float]:
-    """M/M/c con Erlang C.
-
-    Devuelve ``rho`` (utilizacion por servidor), ``P_wait`` (probabilidad de esperar),
-    ``Wq`` (espera media en cola) y ``W`` (tiempo medio en el sistema).
-    """
     _validate(arrival_rate, service_rate, servers)
     a = arrival_rate / service_rate
     rho = a / servers

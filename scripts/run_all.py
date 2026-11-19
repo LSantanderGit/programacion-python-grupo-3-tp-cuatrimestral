@@ -1,11 +1,3 @@
-"""Punto de entrada unico para la reproduccion automatizada del proyecto.
-
-Uso:
-    python -m scripts.run_all --mode quick
-    python -m scripts.run_all --mode full
-    python -m scripts.run_all --mode quick --serve
-"""
-
 import argparse
 import sys
 from pathlib import Path
@@ -53,7 +45,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def print_summary(env: dict, results: dict) -> None:
-    """Imprime un resumen formateado de los resultados en la terminal."""
     print("\n" + "=" * 70)
     print("                    RESUMEN DE RESULTADOS")
     print("=" * 70)
@@ -61,7 +52,6 @@ def print_summary(env: dict, results: dict) -> None:
     print(f"SO: {env.get('os_system')} {env.get('os_release')} | Python: {env.get('python_version')} | Numba: {env.get('numba_version')}")
     print(f"Perfil ejecutado: {results['profile'].upper()}")
 
-    # Metricas de software
     print("\n--- Metricas de Codigo (radon) ---")
     print(f"{'Escalon':<20} | {'SLOC':<6} | {'CC Media':<10} | {'CC Max':<8} | Dependencias")
     print("-" * 70)
@@ -69,7 +59,6 @@ def print_summary(env: dict, results: dict) -> None:
         deps = ", ".join(m["new_dependencies"]) if m["new_dependencies"] else "ninguna"
         print(f"{m['step']:<20} | {m['sloc']:<6} | {m['avg_complexity']:<10} | {m['max_complexity']:<8} | {deps}")
 
-    # Tiempos representativos
     print("\n--- Tiempos y Speedup representativos (servers=2) ---")
     records_c2 = [r for r in results["time_records"] if r["servers"] == 2]
     sizes = sorted({r["n"] for r in records_c2})
@@ -86,7 +75,6 @@ def print_summary(env: dict, results: dict) -> None:
                 sp_str = f"{base_time / r['median_s']:6.2f}x" if base_time and r["median_s"] > 0 else "  N/A  "
                 print(f"  {r['step']:<20}: {med_ms:8.2f} ms (+/- {iqr_ms:6.2f} ms) | Speedup vs Base: {sp_str}")
 
-    # Escalamiento paralelo
     print("\n--- Escalamiento Paralelo (Escalon 5 vs Escalon 4 Serie) ---")
     print(f"{'Procesos':<10} | {'Tiempo (s)':<12} | {'Speedup':<10} | {'Eficiencia':<10}")
     print("-" * 50)
@@ -102,7 +90,6 @@ def print_summary(env: dict, results: dict) -> None:
 def main() -> int:
     args = parse_args()
 
-    # 1. Tests de correccion primero
     if not args.skip_tests:
         print("\n[Paso 1/4] Ejecutando suite de verificacion y correccion (pytest)...")
         exit_code = pytest.main(["-q"])
@@ -113,16 +100,13 @@ def main() -> int:
     else:
         print("[ADVERTENCIA] Omitiendo tests de correccion segun solicitud.\n")
 
-    # 2. Ejecutar benchmarks
     print(f"[Paso 2/4] Ejecutando bateria de benchmarks (modo '{args.mode}')...")
     env = get_env_info()
     results = run_all_benchmarks(mode=args.mode, output_dir=args.output_dir)
     results["output_dir"] = args.output_dir
 
-    # 3. Mostrar resumen en terminal
     print_summary(env, results)
 
-    # 4. Generar reportes y dashboard web
     if not args.skip_report:
         print("[Paso 3/4] Generando figuras PNG (300 DPI) y capitulos del informe...")
         generate_report_and_figures()
@@ -131,7 +115,6 @@ def main() -> int:
         generate_dashboard_html(Path(args.output_dir), dashboard_path)
         print(f"[OK] Dashboard listo en: {dashboard_path.resolve()}\n")
 
-    # 5. Servir dashboard si se solicito
     if args.serve:
         print("-> Iniciando servidor web para el Dashboard interactivo...")
         serve_dashboard()

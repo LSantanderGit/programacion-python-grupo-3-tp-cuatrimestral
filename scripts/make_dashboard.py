@@ -1,10 +1,3 @@
-"""Generador de Dashboard Web Interactivo para visualizacion de resultados.
-
-Lee los datos crudos en results/raw/ y genera results/dashboard.html con un diseno
-moderno, responsivo e interactivo, embebiendo metricas, tablas, specs de hardware,
-graficos de alta resolucion y controles visuales.
-"""
-
 import json
 from pathlib import Path
 
@@ -12,7 +5,6 @@ import pandas as pd
 
 
 def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
-    """Genera el archivo dashboard.html a partir de los datos crudos en raw_dir."""
     env_file = raw_dir / "env.json"
     env = json.loads(env_file.read_text(encoding="utf-8")) if env_file.exists() else {}
 
@@ -28,7 +20,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
     scaling_file = raw_dir / "parallel_scaling.csv"
     df_scaling = pd.read_csv(scaling_file) if scaling_file.exists() else pd.DataFrame()
 
-    # Calcular KPIs
     max_speedup = "146.17x"
     min_time_ms = "0.04 ms"
     if not df_times.empty:
@@ -46,7 +37,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                         max_speedup = f"{t0 / t4:.1f}x"
                         min_time_ms = f"{t4 * 1000:.2f} ms"
 
-    # Estadisticas derivadas para los textos (nada hardcodeado de corridas previas)
     n_ref, t_base_ms, t_numba_ms, sp_numba, sp_e1, sp_e2 = 0, 0.0, 0.0, 0.0, 0.0, 0.0
     if not df_times.empty:
         c2 = df_times[df_times["servers"] == 2]
@@ -81,7 +71,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
             sc_best_sp = float(par["speedup"].max())
             sc_min_t, sc_max_t = float(par["time_s"].min()), float(par["time_s"].max())
             sc_reps, sc_n = int(ser["replicas"].iloc[0]), int(ser["n"].iloc[0])
-            sc_rate = sc_serial / (sc_reps * sc_n)  # s por request en Numba
+            sc_rate = sc_serial / (sc_reps * sc_n)
             first = par.sort_values("workers").iloc[0]
             sc_over = max(float(first["time_s"]) - sc_serial / int(first["workers"]), 0.0)
     par_wins = sc_best_sp > 1.0
@@ -89,7 +79,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
     sc_n_tex = f"{sc_n:,}".replace(",", r"\,")
     breakeven = f"{sc_over / sc_rate:.1e}" if sc_rate > 0 else "N/D"
 
-    # Construir filas de tabla de tiempos
     times_table_rows = []
     if not df_times.empty:
         c2 = df_times[df_times["servers"] == 2]
@@ -112,7 +101,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                     </tr>"""
                 )
 
-    # Construir filas de tabla de radon
     radon_table_rows = []
     for m in code_metrics:
         deps = ", ".join(m["new_dependencies"]) if m["new_dependencies"] else "Ninguna (Stdlib)"
@@ -128,7 +116,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
             </tr>"""
         )
 
-    # Construir filas de escalamiento paralelo
     scaling_table_rows = []
     if not df_scaling.empty:
         for _, r in df_scaling.iterrows():
@@ -149,12 +136,10 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TP Cuatrimestral: Escalera de Optimización | Dashboard</title>
-    <!-- KaTeX: renderiza las formulas $...$ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
         onload="renderMathInElement(document.body, {{delimiters: [{{left: '$', right: '$', display: false}}]}});"></script>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -165,7 +150,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
 
-    <!-- Top Navigation Bar -->
     <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
@@ -181,7 +165,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
             </div>
 
-            <!-- Badges institucionales -->
             <div class="flex flex-wrap items-center gap-2 text-xs">
                 <span class="px-3 py-1 rounded-md bg-slate-700 text-slate-300 border border-slate-600 flex items-center gap-1.5">
                     <i class="fa-solid fa-graduation-cap text-indigo-400"></i> UAI - 093 NORTE
@@ -198,7 +181,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 
     <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
-        <!-- Academic & Institutional Header Card -->
         <section class="bg-gradient-to-r from-slate-800 via-slate-800/90 to-indigo-950/40 rounded-2xl p-6 border border-slate-700 shadow-xl">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
@@ -224,7 +206,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
             </div>
         </section>
 
-        <!-- KPI Highlight Cards -->
         <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700/80 shadow-lg">
                 <div class="flex justify-between items-start">
@@ -271,7 +252,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
             </div>
         </section>
 
-        <!-- System Hardware & Specs Banner -->
         <section class="bg-slate-800/70 rounded-xl p-5 border border-slate-700">
             <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
                 <i class="fa-solid fa-server text-indigo-400"></i> Entorno Experimental de Medición (Hardware & Runtime)
@@ -304,10 +284,8 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
             </div>
         </section>
 
-        <!-- Main Content Sections with Navigation Tabs -->
         <section class="space-y-6">
 
-            <!-- Section 1: Tiempos y Escalabilidad -->
             <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
                 <div class="p-6 border-b border-slate-700 flex justify-between items-center">
                     <div>
@@ -337,9 +315,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
             </div>
 
-            <!-- Section 2: Speedup Acumulado & Amdahl -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Gráfico 2 -->
                 <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
@@ -355,7 +331,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                     </div>
                 </div>
 
-                <!-- Gráfico 4: Amdahl -->
                 <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
@@ -372,9 +347,7 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
             </div>
 
-            <!-- Section 3: Trade-off de Ingeniería (Speedup vs Costo) & Memoria -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Gráfico 3 -->
                 <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
@@ -390,7 +363,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                     </div>
                 </div>
 
-                <!-- Gráfico 5 -->
                 <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
@@ -407,7 +379,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
             </div>
 
-            <!-- Section 4: Data Tables -->
             <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl space-y-6">
                 <div>
                     <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
@@ -458,7 +429,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
                 </div>
             </div>
 
-            <!-- Section 5: Key Engineering Findings -->
             <div class="bg-gradient-to-br from-indigo-950/60 to-slate-900 rounded-2xl border border-indigo-500/30 p-6 shadow-xl">
                 <h3 class="text-base font-bold text-white flex items-center gap-2 mb-4">
                     <i class="fa-solid fa-lightbulb text-amber-400"></i> Síntesis de Hallazgos Empíricos y Conclusiones de Ingeniería
@@ -506,7 +476,6 @@ def generate_dashboard_html(raw_dir: Path, output_file: Path) -> Path:
 
     </main>
 
-    <!-- Footer -->
     <footer class="bg-slate-955 border-t border-slate-800 text-center py-6 text-xs text-slate-500">
         <p>TP Cuatrimestral: Escalera de Optimización &bull; Asignatura: T1-23-88xT1-23-28 PROGRAMACIÓN EN PYTHON &bull; Sede: 093 UAI - NORTE</p>
         <p class="mt-1">Trabajo de Investigación UAI &bull; Buenos Aires, Argentina &bull; 2026</p>

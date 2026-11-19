@@ -5,7 +5,6 @@ from queue_sim.workload import spawn_seeds
 
 
 def test_step5_replicas_coinciden_con_serie():
-    """Verifica que la ejecucion en paralelo da los mismos resultados exactos que en serie."""
     n_requests = 10_000
     arrival_rate = 1.4
     service_rate = 1.0

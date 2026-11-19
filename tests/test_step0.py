@@ -11,7 +11,6 @@ from queue_sim.metrics import metrics
 from queue_sim.theory import mm1, mmc
 from queue_sim.workload import generate_workload, spawn_seeds
 
-# En fases siguientes solo se agregan escalones a esta lista.
 STEPS = [
     step0.simulate,
     step1.simulate,
@@ -53,7 +52,6 @@ def test_invariantes(simulate, servers):
 @pytest.mark.parametrize("simulate", STEPS, ids=IDS)
 @pytest.mark.parametrize("servers", [1, 3])
 def test_contra_teoria(simulate, servers):
-    """Criterio estadistico (D4): media de Wq y W dentro de 3 errores estandar (R=20)."""
     rho, mu, n, reps = 0.7, 1.0, 200_000, 20
     lam = rho * servers * mu
     esperado = mm1(lam, mu) if servers == 1 else mmc(lam, mu, servers)
@@ -71,7 +69,6 @@ def test_contra_teoria(simulate, servers):
 @pytest.mark.parametrize("simulate", STEPS[1:], ids=IDS[1:])
 @pytest.mark.parametrize("servers", [1, 2, 3, 8])
 def test_igual_al_baseline(simulate, servers):
-    """D4: cada escalon coincide con el baseline (allclose, rtol=1e-9)."""
     arrivals, services = generate_workload(100_000, 0.75 * servers, 1.0, seed=11)
     esperado = step0.simulate(arrivals, services, servers)
     assert np.allclose(simulate(arrivals, services, servers), esperado, rtol=1e-9)

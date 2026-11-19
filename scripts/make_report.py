@@ -1,12 +1,3 @@
-"""Generador de figuras (300 DPI), tablas y borradores del informe formal.
-
-Lee exclusivamente los datos crudos en results/raw/ y produce:
-1. Figuras PNG a 300 DPI en results/figures/ (Grafico 1 a 5).
-2. Tablas en Markdown numeradas con romanos (Tabla I a VI).
-3. Borradores capitulares del informe formal en report/ segun la guia UAI.
-4. Documento maestro report/informe_completo.md listo para Google Docs.
-"""
-
 import json
 from pathlib import Path
 
@@ -19,7 +10,6 @@ from queue_sim.metrics import metrics as compute_sim_metrics
 from queue_sim.theory import mm1, mmc
 from queue_sim.workload import generate_workload, spawn_seeds
 
-# Configuracion estetica global de Matplotlib para publicaciones
 plt.rcParams.update({
     "font.size": 11,
     "axes.labelsize": 12,
@@ -46,17 +36,16 @@ STEP_LABELS = {
 }
 
 STEP_COLORS = {
-    "step0_naive": "#7f7f7f",      # Gris
-    "step1_datastructs": "#1f77b4",# Azul
-    "step2_idiomatic": "#2ca02c",  # Verde
-    "step3_numpy": "#ff7f0e",      # Naranja
-    "step4_numba": "#d62728",      # Rojo
-    "step5_parallel": "#9467bd",   # Violeta
+    "step0_naive": "#7f7f7f",
+    "step1_datastructs": "#1f77b4",
+    "step2_idiomatic": "#2ca02c",
+    "step3_numpy": "#ff7f0e",
+    "step4_numba": "#d62728",
+    "step5_parallel": "#9467bd",
 }
 
 
 def load_raw_data(raw_dir: Path) -> dict:
-    """Carga los datasets crudos generados por el harness."""
     data = {}
     env_file = raw_dir / "env.json"
     if env_file.exists():
@@ -85,17 +74,12 @@ def load_raw_data(raw_dir: Path) -> dict:
 
 
 def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
-    """Genera los 5 graficos en PNG a 300 DPI requeridos por la guia."""
     fig_dir.mkdir(parents=True, exist_ok=True)
     generated = {}
     df_times = data["times"]
 
-    # -------------------------------------------------------------
-    # Grafico 1: Tiempo vs Tamano de entrada (Escala Log-Log)
-    # -------------------------------------------------------------
     if not df_times.empty:
         fig, ax = plt.subplots(figsize=(8, 5))
-        # Filtramos para c=2 o el c maximo disponible
         target_c = 2 if 2 in df_times["servers"].values else df_times["servers"].min()
         subset = df_times[df_times["servers"] == target_c]
 
@@ -122,12 +106,8 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
         plt.close(fig)
         generated["grafico_1"] = g1_path
 
-    # -------------------------------------------------------------
-    # Grafico 2: Speedup relativo por escalon vs Baseline
-    # -------------------------------------------------------------
     if not df_times.empty:
         fig, ax = plt.subplots(figsize=(8, 5))
-        # Elegir tamano comun mas grande disponible en baseline
         base_subset = df_times[(df_times["step"] == "step0_naive") & (df_times["servers"] == 2)]
         if not base_subset.empty:
             target_n = base_subset["n"].max()
@@ -168,9 +148,6 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
             plt.close(fig)
             generated["grafico_2"] = g2_path
 
-    # -------------------------------------------------------------
-    # Grafico 3: Trade-off Speedup vs Costo de Mantenimiento (SLOC & CC)
-    # -------------------------------------------------------------
     if data["code_metrics"] and not df_times.empty:
         fig, ax1 = plt.subplots(figsize=(9, 5))
         df_code = pd.DataFrame(data["code_metrics"])
@@ -211,9 +188,6 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
         plt.close(fig)
         generated["grafico_3"] = g3_path
 
-    # -------------------------------------------------------------
-    # Grafico 4: Escalamiento Paralelo (Escalon 5)
-    # -------------------------------------------------------------
     df_scaling = data["scaling"]
     if not df_scaling.empty:
         fig, ax1 = plt.subplots(figsize=(8, 5))
@@ -232,7 +206,6 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
             ax1.plot(warm_subset["workers"].values, warm_subset["speedup"].values, marker="o", color=color_sp,
                      linewidth=2, label="Speedup pool precalentado")
             eff_series = warm_subset["efficiency_pct"].values
-        # Linea ideal
         ax1.plot(workers, workers, linestyle=":", color="gray", label="Speedup Ideal Lineal")
         ax1.axhline(1.0, color="black", linewidth=0.8, alpha=0.5)
         ax1.set_xlabel("Numero de Procesos Trabajadores ($p$)")
@@ -258,9 +231,6 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
         plt.close(fig)
         generated["grafico_4"] = g4_path
 
-    # -------------------------------------------------------------
-    # Grafico 5: Memoria Pico Asignada (tracemalloc)
-    # -------------------------------------------------------------
     df_mem = data["memory"]
     if not df_mem.empty:
         fig, ax = plt.subplots(figsize=(8, 5))
@@ -288,11 +258,9 @@ def generate_figures(data: dict, fig_dir: Path) -> dict[str, Path]:
 
 
 def build_markdown_tables(data: dict) -> dict[str, str]:
-    """Genera las tablas formales en formato Markdown numeradas en romanos."""
     tables = {}
     env = data["env"]
 
-    # Tabla I: Especificaciones del Entorno
     t1 = [
         "| Parametro / Componente | Descripcion y Especificacion Tecnica |",
         "|---|---|",
@@ -306,7 +274,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
     ]
     tables["tabla_I"] = "\n".join(t1)
 
-    # Tabla II: Metricas de Calidad de Software
     t2 = [
         "| Escalon | Archivo | LOC | SLOC | CC Media | CC Max | Dependencias Nuevas |",
         "|---|---|:---:|:---:|:---:|:---:|---|",
@@ -318,7 +285,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
         )
     tables["tabla_II"] = "\n".join(t2)
 
-    # Tabla III: Tiempos de Ejecucion y Speedup
     df_t = data["times"]
     t3 = [
         "| Tamano ($n$) | Escalon | Mediana ($ms$) | IQR ($ms$) | Speedup vs Baseline |",
@@ -340,7 +306,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
                 t3.append(f"| {n:,} | {label} | {med_ms:.2f} | {iqr_ms:.2f} | {sp} |")
     tables["tabla_III"] = "\n".join(t3)
 
-    # Tabla IV: Memoria Pico
     df_m = data["memory"]
     t4 = [
         "| Tamano ($n$) | Escalon | Memoria Pico Asignada (KB) |",
@@ -352,7 +317,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
             t4.append(f"| {int(row['n']):,} | {label} | {row['peak_memory_kb']:.2f} KB |")
     tables["tabla_IV"] = "\n".join(t4)
 
-    # Tabla V: Escalamiento Paralelo
     df_s = data["scaling"]
     t5 = [
         "| Modo / Procesos ($p$) | Tiempo ($s$) | Speedup Relativo | Eficiencia ($E\\%$) |",
@@ -368,7 +332,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
             t5.append(f"| **{label}** | {row['time_s']:.4f} s | {row['speedup']:.2f}x | {row['efficiency_pct']:.1f}% |")
     tables["tabla_V"] = "\n".join(t5)
 
-    # Tabla VI: Validacion Teorica (calculada realmente con step4_numba, R=20, n=200_000, rho=0.7)
     validation_rows = data.get("validation", [])
     t6 = [
         "| Modelo de Cola | Carga $\\rho$ | Servidores ($c$) | Métrica | Valor Teórico | Valor Simulado | Error Estándar ($EE$) | Validación ($|\\Delta| \\le 3EE$) |",
@@ -387,7 +350,6 @@ def build_markdown_tables(data: dict) -> dict[str, str]:
 
 
 def compute_analytical_validation() -> list[dict]:
-    """Ejecuta validacion estadistica real de M/M/1 y M/M/3 contra Erlang C (R=20, n=200_000)."""
     step4_numba.warmup()
     rho, mu, n, reps = 0.7, 1.0, 200_000, 20
     rows: list[dict] = []
@@ -428,10 +390,8 @@ def compute_analytical_validation() -> list[dict]:
 
 
 def extract_report_stats(data: dict) -> dict:
-    """Extrae estadisticas dinamicas de los datos crudos para el texto del informe."""
     stats: dict = {}
 
-    # Metricas de codigo
     cm = {m["step"]: m for m in data.get("code_metrics", [])}
     stats["e0_sloc"] = cm.get("step0_naive", {}).get("sloc", 0)
     stats["e0_cc_max"] = cm.get("step0_naive", {}).get("max_complexity", 0)
@@ -441,7 +401,6 @@ def extract_report_stats(data: dict) -> dict:
     stats["e5_sloc"] = cm.get("step5_parallel", {}).get("sloc", 0)
     stats["e5_cc_avg"] = cm.get("step5_parallel", {}).get("avg_complexity", 0.0)
 
-    # Tiempos para c=2 en el mayor tamano comun con el baseline
     df_t = data.get("times", pd.DataFrame())
     if not df_t.empty:
         c2 = df_t[df_t["servers"] == 2]
@@ -470,14 +429,12 @@ def extract_report_stats(data: dict) -> dict:
         stats["e4_ms"] = e4_s * 1000
         stats["e4_sp"] = base_s / e4_s if e4_s > 0 else 0.0
 
-        # Referencia c=1 para mostrar que NumPy si vectoriza M/M/1
         c1_sub = df_t[(df_t["servers"] == 1) & (df_t["n"] == target_n)]
         base_c1_s = _get_step("step0_naive", c1_sub)
         e3_c1_s = _get_step("step3_numpy", c1_sub)
         stats["e3_c1_ms"] = e3_c1_s * 1000
         stats["e3_c1_sp"] = base_c1_s / e3_c1_s if e3_c1_s > 0 else 0.0
 
-    # Memoria pico en el mayor tamano medido
     df_m = data.get("memory", pd.DataFrame())
     if not df_m.empty:
         max_mem_n = int(df_m["n"].max())
@@ -493,7 +450,6 @@ def extract_report_stats(data: dict) -> dict:
         stats["e2_mem_kb"] = _get_mem("step2_idiomatic")
         stats["e4_mem_kb"] = _get_mem("step4_numba")
 
-    # Escalamiento paralelo
     df_s = data.get("scaling", pd.DataFrame())
     if not df_s.empty:
         serial_row = df_s[df_s["workers"] == 0]
@@ -518,13 +474,11 @@ def extract_report_stats(data: dict) -> dict:
             stats["par_min_sp"] = float(par_rows["speedup"].min())
             stats["par_max_eff"] = float(par_rows["efficiency_pct"].max())
             stats["par_scales"] = stats["par_max_sp"] > 1.0
-            # Costo fijo estimado: tiempo con el menor numero de workers menos el tiempo serie
             first = par_rows.sort_values("workers").iloc[0]
             stats["par_overhead"] = max(float(first["time_s"]) - stats["t_serial"] / int(first["workers"]), 0.0)
             reqs = stats["par_reps"] * stats["par_n"]
             stats["par_breakeven"] = stats["par_overhead"] / (stats["t_serial"] / reqs) if stats["t_serial"] > 0 else 0.0
 
-    # Validacion analitica
     val = data.get("validation", [])
     stats["max_z_score"] = max((r["z_score"] for r in val), default=0.0)
     stats["all_val_pass"] = all(r["passes"] for r in val) if val else False
@@ -535,7 +489,6 @@ def extract_report_stats(data: dict) -> dict:
 def write_report_chapters(
     tables: dict, stats: dict, fig_dir: Path, report_dir: Path
 ) -> Path:
-    """Escribe los capitulos estructurados segun la guia UAI y genera el informe consolidado."""
     report_dir.mkdir(parents=True, exist_ok=True)
 
     target_n = stats.get("target_n", 0)
@@ -749,14 +702,12 @@ Los resultados obtenidos permiten extraer valiosas conclusiones de ingeniería:
 5. (5) Lam P.K., Pitrou A., Seibert S. "Numba: A LLVM-based Just-In-Time Compiler for Python". Proceedings of the Second Workshop on the LLVM Compiler Infrastructure in HPC. ACM. 2015.
 """
 
-    # Guardar capitulos individuales
     (report_dir / "01_caratula_y_resumen.md").write_text(c1, encoding="utf-8")
     (report_dir / "02_introduccion_y_objetivos.md").write_text(c2, encoding="utf-8")
     (report_dir / "03_aspectos_teoricos_y_metodos.md").write_text(c3, encoding="utf-8")
     (report_dir / "04_resultados.md").write_text(c4, encoding="utf-8")
     (report_dir / "05_discusion_y_conclusiones.md").write_text(c5, encoding="utf-8")
 
-    # Guardar informe maestro consolidado
     consolidated = f"{c1}\n\n---\n\n{c2}\n\n---\n\n{c3}\n\n---\n\n{c4}\n\n---\n\n{c5}"
     full_path = report_dir / "informe_completo.md"
     full_path.write_text(consolidated, encoding="utf-8")
